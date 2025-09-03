@@ -2,6 +2,7 @@ package com.ridesync.controller;
 
 import com.ridesync.dto.UserRegistrationDto;
 import com.ridesync.model.User;
+import com.ridesync.security.JwtUtil;
 import com.ridesync.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,9 @@ public class AuthController {
     
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
     
     // BUG T01: Broken User Registration – No password hashing, duplicate emails allowed
     @PostMapping("/register")
@@ -54,8 +58,12 @@ public class AuthController {
             
             // BUG T01: Direct password comparison instead of BCrypt
             if (userService.validatePassword(password, user.getPassword())) {
+                // Generate JWT token with username as subject
+                String token = jwtUtil.generateToken(user.getUsername());
+                
                 Map<String, Object> response = new HashMap<>();
                 response.put("message", "Login successful");
+                response.put("token", token);
                 response.put("userId", user.getId());
                 response.put("username", user.getUsername());
                 response.put("role", user.getRole());

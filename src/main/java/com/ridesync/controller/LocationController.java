@@ -1,6 +1,9 @@
 package com.ridesync.controller;
 
+import com.ridesync.dto.ApiResponse;
 import com.ridesync.dto.LocationUpdateDto;
+import com.ridesync.dto.LocationUpdateResponseDto;
+import com.ridesync.mapper.LocationMapper;
 import com.ridesync.model.LocationUpdate;
 import com.ridesync.service.LocationService;
 import jakarta.validation.Valid;
@@ -9,9 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/location")
@@ -21,75 +22,77 @@ public class LocationController {
     @Autowired
     private LocationService locationService;
     
+    @Autowired
+    private LocationMapper locationMapper;
+    
     // BUG T03: Insecure Location API – No JWT/session validation
     @PostMapping("/update")
-    public ResponseEntity<?> updateLocation(@Valid @RequestBody LocationUpdateDto locationDto) {
+    public ResponseEntity<ApiResponse<LocationUpdateResponseDto>> updateLocation(@Valid @RequestBody LocationUpdateDto locationDto) {
         try {
             // BUG T03: No authentication/authorization check
             // BUG T03: No validation that userId in token matches payload
             LocationUpdate locationUpdate = locationService.saveLocationUpdate(locationDto);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Location updated successfully");
-            response.put("locationId", locationUpdate.getId());
-            
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.success("Location updated successfully", 
+                    locationMapper.toLocationUpdateResponseDto(locationUpdate)));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to update location: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Failed to update location: " + e.getMessage(), "LOCATION_UPDATE_ERROR"));
         }
     }
     
     @GetMapping("/ride/{rideId}")
-    public ResponseEntity<?> getLocationUpdatesForRide(@PathVariable Long rideId) {
+    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getLocationUpdatesForRide(@PathVariable Long rideId) {
         try {
             List<LocationUpdate> updates = locationService.getLocationUpdatesForRide(rideId);
-            return ResponseEntity.ok(updates);
+            return ResponseEntity.ok(ApiResponse.success("Location updates retrieved successfully", 
+                    locationMapper.toLocationUpdateResponseDtoList(updates)));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to fetch location updates: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch location updates: " + e.getMessage(), "FETCH_LOCATION_ERROR"));
         }
     }
     
     @GetMapping("/user/{userId}")
-    public ResponseEntity<?> getLocationUpdatesForUser(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getLocationUpdatesForUser(@PathVariable Long userId) {
         try {
             List<LocationUpdate> updates = locationService.getLocationUpdatesForUser(userId);
-            return ResponseEntity.ok(updates);
+            return ResponseEntity.ok(ApiResponse.success("User location updates retrieved successfully", 
+                    locationMapper.toLocationUpdateResponseDtoList(updates)));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to fetch location updates: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            ApiResponse<List<LocationUpdateResponseDto>> response = ApiResponse.error("Failed to fetch location updates: " + e.getMessage(), "FETCH_USER_LOCATION_ERROR");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
     
     // BUG T13: Location data leakage – unrestricted API query
     @GetMapping("/active")
-    public ResponseEntity<?> getAllActiveLocationUpdates() {
+    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getAllActiveLocationUpdates() {
         try {
             // BUG T13: Returns all active locations without group filtering
             List<LocationUpdate> updates = locationService.getAllActiveLocationUpdates();
-            return ResponseEntity.ok(updates);
+            List<LocationUpdateResponseDto> responseDtos = locationMapper.toLocationUpdateResponseDtoList(updates);
+            
+            ApiResponse<List<LocationUpdateResponseDto>> response = ApiResponse.success("Active location updates retrieved successfully", responseDtos);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to fetch active location updates: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            ApiResponse<List<LocationUpdateResponseDto>> response = ApiResponse.error("Failed to fetch active location updates: " + e.getMessage(), "FETCH_ACTIVE_LOCATION_ERROR");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
     
     @GetMapping("/nearby")
-    public ResponseEntity<?> getNearbyLocationUpdates(@RequestParam Double latitude,
+    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getNearbyLocationUpdates(@RequestParam Double latitude,
                                                     @RequestParam Double longitude,
                                                     @RequestParam(defaultValue = "1000") Double radius) {
         try {
             List<LocationUpdate> updates = locationService.getNearbyLocationUpdates(latitude, longitude, radius);
-            return ResponseEntity.ok(updates);
+            List<LocationUpdateResponseDto> responseDtos = locationMapper.toLocationUpdateResponseDtoList(updates);
+            
+            ApiResponse<List<LocationUpdateResponseDto>> response = ApiResponse.success("Nearby location updates retrieved successfully", responseDtos);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to fetch nearby location updates: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            ApiResponse<List<LocationUpdateResponseDto>> response = ApiResponse.error("Failed to fetch nearby location updates: " + e.getMessage(), "FETCH_NEARBY_LOCATION_ERROR");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 }

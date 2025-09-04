@@ -1,6 +1,5 @@
 package com.ridesync.controller;
 
-import com.ridesync.model.LocationUpdate;
 import com.ridesync.service.GroupService;
 import com.ridesync.service.LocationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +34,7 @@ public class WebSocketController {
         try {
             String sessionId = headerAccessor.getSessionId();
             Long userId = Long.valueOf(locationData.get("userId").toString());
-            Long rideId = Long.valueOf(locationData.get("rideId").toString());
+            // Long rideId = Long.valueOf(locationData.get("rideId").toString()); // Unused variable
             
             // BUG T04: No check for multiple active sessions per user
             // BUG T07: No group membership validation
@@ -102,8 +101,10 @@ public class WebSocketController {
             String sessionId = headerAccessor.getSessionId();
             
             // BUG T14: Simple response without connection optimization
-            messagingTemplate.convertAndSendToUser(sessionId, "/queue/pong", 
-                Map.of("timestamp", System.currentTimeMillis()));
+            if (sessionId != null) {
+                messagingTemplate.convertAndSendToUser(sessionId, "/queue/pong", 
+                    Map.of("timestamp", System.currentTimeMillis()));
+            }
             
         } catch (Exception e) {
             System.err.println("Error handling ping: " + e.getMessage());

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -34,46 +35,57 @@ public class GroupService {
     @Autowired
     private JavaMailSender mailSender;
     
-    public Group createGroup(String name, String description, Long createdBy) {
-        Group group = new Group();
-        group.setName(name);
-        group.setDescription(description);
-        group.setCreatedBy(createdBy);
-        group.setIsActive(true);
-        group.setCreatedAt(LocalDateTime.now());
+    public Group createGroup(String name, String description, User admin) {
+        Group group = Group.builder()
+                .name(name)
+                .description(description)
+                .admin(admin)
+                .isActive(true)
+                .build();
         
         Group savedGroup = groupRepository.save(group);
         
         // Add creator as admin
-        User creator = userRepository.findById(createdBy).orElseThrow();
-        GroupMember adminMember = new GroupMember(savedGroup, creator, GroupRole.ADMIN);
+        GroupMember adminMember = GroupMember.builder()
+                .group(savedGroup)
+                .user(admin)
+                .role(GroupRole.ADMIN)
+                .joinedAt(LocalDateTime.now())
+                .isActive(true)
+                .build();
         groupMemberRepository.save(adminMember);
         
         return savedGroup;
     }
     
-    public List<Group> getUserGroups(Long userId) {
+    public List<Group> getUserGroups(UUID userId) {
         return groupRepository.findByUserId(userId);
     }
     
-    public Optional<Group> findById(Long groupId) {
+    public Optional<Group> findById(UUID groupId) {
         return groupRepository.findById(groupId);
     }
     
-    public List<GroupMember> getGroupMembers(Long groupId) {
+    public List<GroupMember> getGroupMembers(UUID groupId) {
         return groupMemberRepository.findByGroupIdAndIsActiveTrue(groupId);
     }
     
-    public GroupMember addMemberToGroup(Long groupId, Long userId, GroupRole role) {
+    public GroupMember addMemberToGroup(UUID groupId, UUID userId, GroupRole role) {
         Group group = groupRepository.findById(groupId).orElseThrow();
         User user = userRepository.findById(userId).orElseThrow();
         
-        GroupMember member = new GroupMember(group, user, role);
+        GroupMember member = GroupMember.builder()
+                .group(group)
+                .user(user)
+                .role(role)
+                .joinedAt(LocalDateTime.now())
+                .isActive(true)
+                .build();
         return groupMemberRepository.save(member);
     }
     
     // BUG T02: No admin role check for sending invites
-    public void sendGroupInvite(GroupInviteDto inviteDto, Long senderId) {
+    public void sendGroupInvite(GroupInviteDto inviteDto, UUID senderId) {
         // BUG T02: Missing admin role check - anyone can send invites
         Group group = groupRepository.findById(inviteDto.getGroupId()).orElseThrow();
         
@@ -88,16 +100,16 @@ public class GroupService {
         mailSender.send(message);
     }
     
-    public boolean isUserMemberOfGroup(Long userId, Long groupId) {
+    public boolean isUserMemberOfGroup(UUID userId, UUID groupId) {
         return groupMemberRepository.findActiveMembership(groupId, userId).isPresent();
     }
     
-    public boolean isUserAdminOfGroup(Long userId, Long groupId) {
+    public boolean isUserAdminOfGroup(UUID userId, UUID groupId) {
         Optional<GroupMember> membership = groupMemberRepository.findActiveMembership(groupId, userId);
         return membership.isPresent() && membership.get().getRole() == GroupRole.ADMIN;
     }
     
-    public void removeMemberFromGroup(Long groupId, Long userId) {
+    public void removeMemberFromGroup(UUID groupId, UUID userId) {
         groupMemberRepository.findActiveMembership(groupId, userId).ifPresent(member -> {
             member.setIsActive(false);
             groupMemberRepository.save(member);
@@ -108,7 +120,7 @@ public class GroupService {
         groupRepository.save(group);
     }
     
-    public void deactivateGroup(Long groupId) {
+    public void deactivateGroup(UUID groupId) {
         groupRepository.findById(groupId).ifPresent(group -> {
             group.setIsActive(false);
             groupRepository.save(group);

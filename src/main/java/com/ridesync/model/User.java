@@ -7,24 +7,30 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+@EqualsAndHashCode(callSuper = false)
+public class User extends BaseEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
     
     @NotBlank
     @Size(min = 2, max = 50)
-    @Column(name = "username", unique = true)
+    @Column(name = "username", nullable = false, unique = true)
     private String username;
     
     @NotBlank
@@ -45,46 +51,34 @@ public class User {
     @Column(name = "last_name")
     private String lastName;
     
-    @Column(name = "phone")
-    private String phone;
-    
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
+    @Builder.Default
     private UserRole role = UserRole.USER;
-    
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
     
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
     
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private Set<GroupMember> groupMemberships = new HashSet<>();
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private Set<Ride> rides = new HashSet<>();
+    
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
+    private Set<Device> devices = new HashSet<>();
     
     // Custom constructor for registration
     public User(String username, String email, String password) {
-        this.createdAt = LocalDateTime.now();
         this.username = username;
         this.email = email;
         this.password = password; // BUG T01: Raw password storage
-    }
-    
-    @Override
-    public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", username='" + username + '\'' +
-                ", email='" + email + '\'' +
-                ", firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                ", role=" + role +
-                ", isActive=" + isActive +
-                '}';
     }
 }

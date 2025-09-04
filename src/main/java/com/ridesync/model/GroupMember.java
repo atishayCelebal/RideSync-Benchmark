@@ -4,18 +4,24 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "group_members")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GroupMember {
+@EqualsAndHashCode(callSuper = false)
+public class GroupMember extends BaseEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
@@ -27,12 +33,14 @@ public class GroupMember {
     
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
+    @Builder.Default
     private GroupRole role = GroupRole.MEMBER;
     
-    @Column(name = "joined_at")
+    @Column(name = "joined_at") 
     private LocalDateTime joinedAt;
     
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
     
     // Custom constructor for creating group members
@@ -41,16 +49,5 @@ public class GroupMember {
         this.group = group;
         this.user = user;
         this.role = role;
-    }
-    
-    @Override
-    public String toString() {
-        return "GroupMember{" +
-                "id=" + id +
-                ", group=" + (group != null ? group.getId() : null) +
-                ", user=" + (user != null ? user.getId() : null) +
-                ", role=" + role +
-                ", isActive=" + isActive +
-                '}';
-    }
+    }   
 }

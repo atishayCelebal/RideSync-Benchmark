@@ -6,20 +6,24 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import java.time.LocalDateTime;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "groups")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Group {
+@EqualsAndHashCode(callSuper = false)
+public class Group extends BaseEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
     
     @NotBlank
     @Size(min = 2, max = 100)
@@ -29,37 +33,26 @@ public class Group {
     @Column(name = "description")
     private String description;
     
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-    
-    @Column(name = "created_by")
-    private Long createdBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_id", nullable = false)
+    private User admin;
     
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
     
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private Set<GroupMember> members = new HashSet<>();
     
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private Set<Ride> rides = new HashSet<>();
     
     // Custom constructor for creating groups
-    public Group(String name, String description, Long createdBy) {
-        this.createdAt = LocalDateTime.now();
+    public Group(String name, String description, User admin) {
         this.name = name;
         this.description = description;
-        this.createdBy = createdBy;
-    }
-    
-    @Override
-    public String toString() {
-        return "Group{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", description='" + description + '\'' +
-                ", createdBy=" + createdBy +
-                ", isActive=" + isActive +
-                '}';
+        this.admin = admin;
     }
 }

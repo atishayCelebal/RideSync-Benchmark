@@ -5,18 +5,23 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import java.time.LocalDateTime;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import java.util.UUID;
 
 @Entity
 @Table(name = "alerts")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Alert {
+@EqualsAndHashCode(callSuper = false)
+public class Alert extends BaseEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ride_id", nullable = false)
@@ -25,6 +30,10 @@ public class Alert {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "device_id")
+    private Device device;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "type")
@@ -36,6 +45,7 @@ public class Alert {
     private String message;
     
     @Column(name = "severity")
+    @Builder.Default
     private String severity = "INFO";
     
     @Column(name = "latitude")
@@ -44,31 +54,16 @@ public class Alert {
     @Column(name = "longitude")
     private Double longitude;
     
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-    
     @Column(name = "is_read")
+    @Builder.Default
     private Boolean isRead = false;
     
     // Custom constructor for creating alerts
-    public Alert(Ride ride, User user, AlertType type, String message) {
-        this.createdAt = LocalDateTime.now();
+    public Alert(Ride ride, User user, Device device, AlertType type, String message) {
         this.ride = ride;
         this.user = user;
+        this.device = device;
         this.type = type;
         this.message = message;
-    }
-    
-    @Override
-    public String toString() {
-        return "Alert{" +
-                "id=" + id +
-                ", ride=" + (ride != null ? ride.getId() : null) +
-                ", user=" + (user != null ? user.getId() : null) +
-                ", type=" + type +
-                ", message='" + message + '\'' +
-                ", severity='" + severity + '\'' +
-                ", isRead=" + isRead +
-                '}';
     }
 }

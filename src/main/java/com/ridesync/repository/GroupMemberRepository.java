@@ -9,19 +9,20 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> {
+public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> {
     
-    Optional<GroupMember> findByGroupIdAndUserIdAndIsActiveTrue(Long groupId, Long userId);
+    Optional<GroupMember> findByGroupIdAndUserIdAndIsActiveTrue(UUID groupId, UUID userId);
     
-    List<GroupMember> findByGroupIdAndIsActiveTrue(Long groupId);
+    List<GroupMember> findByGroupIdAndIsActiveTrue(UUID groupId);
     
-    List<GroupMember> findByUserIdAndIsActiveTrue(Long userId);
+    List<GroupMember> findByUserIdAndIsActiveTrue(UUID userId);
     
     @Query("SELECT gm FROM GroupMember gm WHERE gm.group.id = :groupId AND gm.role = :role AND gm.isActive = true")
-    List<GroupMember> findByGroupIdAndRole(@Param("groupId") Long groupId, @Param("role") GroupRole role);
+    List<GroupMember> findByGroupIdAndRole(@Param("groupId") UUID groupId, @Param("role") GroupRole role);
     
     @Query("SELECT gm FROM GroupMember gm WHERE gm.group.id = :groupId AND gm.user.id = :userId AND gm.isActive = true")
-    Optional<GroupMember> findActiveMembership(@Param("groupId") Long groupId, @Param("userId") Long userId);
+    Optional<GroupMember> findActiveMembership(@Param("groupId") UUID groupId, @Param("userId") UUID userId);
 }

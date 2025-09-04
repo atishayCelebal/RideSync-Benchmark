@@ -5,18 +5,23 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "location_updates")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LocationUpdate {
+@EqualsAndHashCode(callSuper = false)
+public class LocationUpdate extends BaseEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ride_id", nullable = false)
@@ -46,37 +51,20 @@ public class LocationUpdate {
     @Column(name = "accuracy")
     private Double accuracy;
     
-    @Column(name = "device_id")
-    // BUG T08: Using deviceId instead of userId for tracking
-    private String deviceId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "device_id")
+    private Device device;
     
     @Column(name = "timestamp")
     private LocalDateTime timestamp;
     
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-    
     // Custom constructor for location updates
-    public LocationUpdate(Ride ride, User user, Double latitude, Double longitude, String deviceId) {
-        this.createdAt = LocalDateTime.now();
+    public LocationUpdate(Ride ride, User user, Double latitude, Double longitude, Device device) {
         this.timestamp = LocalDateTime.now();
         this.ride = ride;
         this.user = user;
         this.latitude = latitude;
         this.longitude = longitude;
-        this.deviceId = deviceId; // BUG T08: Using deviceId
-    }
-    
-    @Override
-    public String toString() {
-        return "LocationUpdate{" +
-                "id=" + id +
-                ", ride=" + (ride != null ? ride.getId() : null) +
-                ", user=" + (user != null ? user.getId() : null) +
-                ", latitude=" + latitude +
-                ", longitude=" + longitude +
-                ", deviceId='" + deviceId + '\'' +
-                ", timestamp=" + timestamp +
-                '}';
+        this.device = device;
     }
 }

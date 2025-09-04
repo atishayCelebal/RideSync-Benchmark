@@ -2,7 +2,7 @@ package com.ridesync.controller;
 
 import com.ridesync.service.GroupService;
 import com.ridesync.service.LocationService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
@@ -13,16 +13,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Controller
+@RequiredArgsConstructor
 public class WebSocketController {
     
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
-    
-    @Autowired
-    private LocationService locationService;
-    
-    @Autowired
-    private GroupService groupService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final LocationService locationService;
+    private final GroupService groupService;
     
     // BUG T04: Multiple active sessions per user – duplicate map markers
     // BUG T07: WebSocket allows join without group check

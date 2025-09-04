@@ -11,7 +11,7 @@ import com.ridesync.model.GroupRole;
 import com.ridesync.service.GroupService;
 import com.ridesync.service.UserService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,16 +22,12 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/groups")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class GroupController {
     
-    @Autowired
-    private GroupService groupService;
-    
-    @Autowired
-    private UserService userService;
-    
-    @Autowired
-    private GroupMapper groupMapper;
+    private final GroupService groupService;
+    private final UserService userService;
+    private final GroupMapper groupMapper;
     
     @PostMapping
     public ResponseEntity<ApiResponse<GroupResponseDto>> createGroup(@RequestBody Map<String, String> groupRequest,

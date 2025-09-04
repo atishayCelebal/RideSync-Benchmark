@@ -20,8 +20,11 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.expiration}")
-    private Long expiration;
+    @Value("${jwt.access-token.expiration:86400}") // 24 hours default
+    private Long accessTokenExpiration;
+
+    @Value("${jwt.refresh-token.expiration:604800}") // 7 days default
+    private Long refreshTokenExpiration;
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
@@ -52,22 +55,37 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(String username) {
+    public String generateAccessToken(String username) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, username);
+        return createToken(claims, username, accessTokenExpiration);
+    }
+
+    public String generateAccessToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        return createToken(claims, userDetails.getUsername(), accessTokenExpiration);
+    }
+
+    public String generateRefreshToken(String username) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", "refresh");
+        return createToken(claims, username, refreshTokenExpiration);
+    }
+
+    // Backward compatibility
+    public String generateToken(String username) {
+        return generateAccessToken(username);
     }
 
     public String generateToken(UserDetails userDetails) {
-        Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, userDetails.getUsername());
+        return generateAccessToken(userDetails);
     }
 
-    private String createToken(Map<String, Object> claims, String subject) {
+    private String createToken(Map<String, Object> claims, String subject, Long expiration) {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject) // Using username as subject
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration * 1000)) // Convert to milliseconds
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

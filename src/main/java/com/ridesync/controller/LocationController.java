@@ -7,7 +7,7 @@ import com.ridesync.mapper.LocationMapper;
 import com.ridesync.model.LocationUpdate;
 import com.ridesync.service.LocationService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,13 +17,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/location")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class LocationController {
     
-    @Autowired
-    private LocationService locationService;
-    
-    @Autowired
-    private LocationMapper locationMapper;
+    private final LocationService locationService;
+    private final LocationMapper locationMapper;
     
     // BUG T03: Insecure Location API – No JWT/session validation
     @PostMapping("/update")

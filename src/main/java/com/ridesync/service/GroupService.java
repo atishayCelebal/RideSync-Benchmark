@@ -7,6 +7,7 @@ import com.ridesync.model.GroupRole;
 import com.ridesync.model.User;
 import com.ridesync.repository.GroupMemberRepository;
 import com.ridesync.repository.GroupRepository;
+import com.ridesync.dto.GroupRequestDto;
 import com.ridesync.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
@@ -35,10 +36,10 @@ public class GroupService {
     @Autowired
     private JavaMailSender mailSender;
     
-    public Group createGroup(String name, String description, User admin) {
+    public Group createGroup(GroupRequestDto groupRequest, User admin) {
         Group group = Group.builder()
-                .name(name)
-                .description(description)
+                .name(groupRequest.getName())
+                .description(groupRequest.getDescription())
                 .admin(admin)
                 .isActive(true)
                 .build();

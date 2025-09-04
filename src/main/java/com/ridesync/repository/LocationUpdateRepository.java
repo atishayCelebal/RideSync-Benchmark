@@ -8,26 +8,44 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface LocationUpdateRepository extends JpaRepository<LocationUpdate, Long> {
+public interface LocationUpdateRepository extends JpaRepository<LocationUpdate, UUID> {
     
-    List<LocationUpdate> findByRideIdOrderByTimestampDesc(Long rideId);
+    List<LocationUpdate> findByRideIdOrderByTimestampDesc(UUID rideId);
     
-    List<LocationUpdate> findByUserIdOrderByTimestampDesc(Long userId);
+    List<LocationUpdate> findByUserIdOrderByTimestampDesc(UUID userId);
     
     @Query("SELECT lu FROM LocationUpdate lu WHERE lu.ride.id = :rideId AND lu.timestamp >= :since ORDER BY lu.timestamp DESC")
-    List<LocationUpdate> findByRideIdAndTimestampAfter(@Param("rideId") Long rideId, @Param("since") LocalDateTime since);
+    List<LocationUpdate> findByRideIdAndTimestampAfter(@Param("rideId") UUID rideId, @Param("since") LocalDateTime since);
     
     @Query("SELECT lu FROM LocationUpdate lu WHERE lu.ride.id = :rideId AND lu.user.id = :userId ORDER BY lu.timestamp DESC")
-    List<LocationUpdate> findByRideIdAndUserId(@Param("rideId") Long rideId, @Param("userId") Long userId);
+    List<LocationUpdate> findByRideIdAndUserId(@Param("rideId") UUID rideId, @Param("userId") UUID userId);
     
     // BUG T13: Unrestricted query - no group filtering
     @Query("SELECT lu FROM LocationUpdate lu WHERE lu.ride.status = 'ACTIVE' ORDER BY lu.timestamp DESC")
     List<LocationUpdate> findAllActiveLocationUpdates();
     
-    @Query("SELECT lu FROM LocationUpdate lu WHERE lu.ride.id = :rideId AND lu.deviceId = :deviceId ORDER BY lu.timestamp DESC")
-    List<LocationUpdate> findByRideIdAndDeviceId(@Param("rideId") Long rideId, @Param("deviceId") String deviceId);
+    @Query("SELECT lu FROM LocationUpdate lu WHERE lu.ride.id = :rideId AND lu.device.id = :deviceId ORDER BY lu.timestamp DESC")
+    List<LocationUpdate> findByRideIdAndDeviceId(@Param("rideId") UUID rideId, @Param("deviceId") UUID deviceId);
+    
+    // Group-based location queries
+    @Query("SELECT lu FROM LocationUpdate lu " +
+           "JOIN lu.ride r " +
+           "JOIN r.group g " +
+           "WHERE g.id = :groupId AND r.id = :rideId " +
+           "ORDER BY lu.timestamp DESC")
+    List<LocationUpdate> findByGroupIdAndRideIdOrderByTimestampDesc(@Param("groupId") UUID groupId, @Param("rideId") UUID rideId);
+    
+    @Query("SELECT lu FROM LocationUpdate lu " +
+           "JOIN lu.ride r " +
+           "JOIN r.group g " +
+           "WHERE g.id = :groupId AND r.status = 'ACTIVE' " +
+           "AND lu.timestamp = (SELECT MAX(lu2.timestamp) FROM LocationUpdate lu2 " +
+           "WHERE lu2.user.id = lu.user.id AND lu2.ride.id = r.id) " +
+           "ORDER BY lu.timestamp DESC")
+    List<LocationUpdate> findCurrentGroupLocations(@Param("groupId") UUID groupId);
     
     // BUG T16: Inefficient nearby query - no bounding box filter
     @Query("SELECT lu FROM LocationUpdate lu WHERE " +

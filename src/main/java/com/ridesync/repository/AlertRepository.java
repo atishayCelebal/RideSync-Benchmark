@@ -18,6 +18,12 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
     
     List<Alert> findByUserIdOrderByCreatedAtDesc(UUID userId);
     
+    @Query("SELECT a FROM Alert a WHERE a.user.id = :userId AND a.isRead = false ORDER BY a.createdAt DESC")
+    List<Alert> findByUserIdAndIsReadFalseOrderByCreatedAtDesc(@Param("userId") UUID userId);
+    
+    @Query("SELECT a FROM Alert a JOIN a.ride r JOIN r.group g WHERE g.id = :groupId ORDER BY a.createdAt DESC")
+    List<Alert> findByGroupIdOrderByCreatedAtDesc(@Param("groupId") UUID groupId);
+    
     @Query("SELECT a FROM Alert a WHERE a.ride.id = :rideId AND a.type = :type ORDER BY a.createdAt DESC")
     List<Alert> findByRideIdAndType(@Param("rideId") UUID rideId, @Param("type") AlertType type);
     

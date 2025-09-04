@@ -19,12 +19,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.ridesync.exception.ResourceNotFoundException;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/groups")
-@CrossOrigin(origins = "*")
+@RequestMapping("/api/v1/groups")
 @RequiredArgsConstructor
 public class GroupController {
     
@@ -35,7 +35,7 @@ public class GroupController {
     public ResponseEntity<ApiResponse<GroupResponseDto>> createGroup(@Valid @RequestBody GroupRequestDto groupRequest) {
         User admin = SecurityUtil.getCurrentUser();
         
-        Group group = groupService.createGroup(groupRequest.getName(), groupRequest.getDescription(), admin);
+        Group group = groupService.createGroup(groupRequest, admin);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Group created successfully", groupMapper.toGroupResponseDto(group)));
     }
@@ -51,7 +51,7 @@ public class GroupController {
     @GetMapping("/{groupId}")
     public ResponseEntity<ApiResponse<GroupResponseDto>> getGroup(@PathVariable UUID groupId) {
         Group group = groupService.findById(groupId)
-                .orElseThrow(() -> new com.ridesync.exception.ResourceNotFoundException("Group", "id", groupId));
+                .orElseThrow(() -> new ResourceNotFoundException("Group", "id", groupId));
         return ResponseEntity.ok(ApiResponse.success("Group retrieved successfully", 
                 groupMapper.toGroupResponseDto(group)));
     }

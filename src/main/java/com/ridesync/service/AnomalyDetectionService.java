@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -28,7 +29,7 @@ public class AnomalyDetectionService {
     private int stationaryThresholdSeconds=180;
     
     // BUG T18: Slow anomaly detection - blocking IO
-    public void detectAnomalies(Long rideId) {
+    public void detectAnomalies(UUID rideId) {
         // BUG T18: Blocking database calls in main thread
         List<LocationUpdate> recentUpdates = locationUpdateRepository
                 .findByRideIdOrderByTimestampDesc(rideId);
@@ -47,7 +48,7 @@ public class AnomalyDetectionService {
     }
     
     // BUG T10: Stationary alerts false positive due to GPS jitter
-    private void detectStationaryAnomaly(Long userId, List<LocationUpdate> updates) {
+    private void detectStationaryAnomaly(UUID userId, List<LocationUpdate> updates) {
         if (updates.size() < 2) return;
         
         LocationUpdate latest = updates.get(0);
@@ -68,7 +69,7 @@ public class AnomalyDetectionService {
     }
     
     // BUG T11: Direction drift miscalculation
-    private void detectDirectionDrift(Long userId, List<LocationUpdate> updates) {
+    private void detectDirectionDrift(UUID userId, List<LocationUpdate> updates) {
         if (updates.size() < 3) return;
         
         LocationUpdate latest = updates.get(0);
@@ -122,7 +123,7 @@ public class AnomalyDetectionService {
     }
     
     // BUG T18: Should be async but is blocking
-    public CompletableFuture<Void> detectAnomaliesAsync(Long rideId) {
+    public CompletableFuture<Void> detectAnomaliesAsync(UUID rideId) {
         return CompletableFuture.runAsync(() -> {
             // Still blocking in async context
             detectAnomalies(rideId);

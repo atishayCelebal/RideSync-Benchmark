@@ -1,7 +1,6 @@
 package com.ridesync.controller;
 
 import com.ridesync.dto.ApiResponse;
-import com.ridesync.dto.AuthResponseDto;
 import com.ridesync.dto.LoginRequestDto;
 import com.ridesync.dto.RefreshTokenRequestDto;
 import com.ridesync.dto.TokenResponseDto;
@@ -21,11 +20,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
-@RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
     

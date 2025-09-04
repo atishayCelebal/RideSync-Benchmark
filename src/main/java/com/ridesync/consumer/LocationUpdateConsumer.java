@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class LocationUpdateConsumer {
@@ -48,7 +49,7 @@ public class LocationUpdateConsumer {
             broadcastData.put("rideId", locationUpdate.getRide().getId());
             broadcastData.put("latitude", locationUpdate.getLatitude());
             broadcastData.put("longitude", locationUpdate.getLongitude());
-            broadcastData.put("deviceId", locationUpdate.getDeviceId()); // BUG T08: Using deviceId
+            broadcastData.put("deviceId", locationUpdate.getDevice() != null ? locationUpdate.getDevice().getId() : null); // BUG T08: Using deviceId
             broadcastData.put("timestamp", locationUpdate.getTimestamp());
             
             messagingTemplate.convertAndSend("/topic/location.updates", broadcastData);
@@ -70,7 +71,7 @@ public class LocationUpdateConsumer {
     public void handleRideEvent(Map<String, Object> rideEvent) {
         try {
             String eventType = rideEvent.get("eventType").toString();
-            Long rideId = Long.valueOf(rideEvent.get("rideId").toString());
+            UUID rideId = UUID.fromString(rideEvent.get("rideId").toString());
             
             // Process ride events
             if ("RIDE_STARTED".equals(eventType)) {

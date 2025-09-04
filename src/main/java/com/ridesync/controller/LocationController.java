@@ -8,15 +8,14 @@ import com.ridesync.model.LocationUpdate;
 import com.ridesync.service.LocationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/location")
-@CrossOrigin(origins = "*")
+@RequestMapping("/api/v1/location")
 @RequiredArgsConstructor
 public class LocationController {
     
@@ -34,16 +33,34 @@ public class LocationController {
     }
     
     @GetMapping("/ride/{rideId}")
-    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getLocationUpdatesForRide(@PathVariable Long rideId) {
+    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getLocationUpdatesForRide(@PathVariable UUID rideId) {
         List<LocationUpdate> updates = locationService.getLocationUpdatesForRide(rideId);
         return ResponseEntity.ok(ApiResponse.success("Location updates retrieved successfully", 
                 locationMapper.toLocationUpdateResponseDtoList(updates)));
     }
     
     @GetMapping("/user/{userId}")
-    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getLocationUpdatesForUser(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getLocationUpdatesForUser(@PathVariable UUID userId) {
         List<LocationUpdate> updates = locationService.getLocationUpdatesForUser(userId);
         return ResponseEntity.ok(ApiResponse.success("User location updates retrieved successfully", 
+                locationMapper.toLocationUpdateResponseDtoList(updates)));
+    }
+    
+    // Get locations of all group members during a ride
+    @GetMapping("/group/{groupId}/ride/{rideId}")
+    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getGroupLocationUpdatesForRide(
+            @PathVariable UUID groupId, 
+            @PathVariable UUID rideId) {
+        List<LocationUpdate> updates = locationService.getGroupLocationUpdatesForRide(groupId, rideId);
+        return ResponseEntity.ok(ApiResponse.success("Group location updates retrieved successfully", 
+                locationMapper.toLocationUpdateResponseDtoList(updates)));
+    }
+    
+    // Get current locations of all active group members
+    @GetMapping("/group/{groupId}/current")
+    public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getCurrentGroupLocations(@PathVariable UUID groupId) {
+        List<LocationUpdate> updates = locationService.getCurrentGroupLocations(groupId);
+        return ResponseEntity.ok(ApiResponse.success("Current group locations retrieved successfully", 
                 locationMapper.toLocationUpdateResponseDtoList(updates)));
     }
     

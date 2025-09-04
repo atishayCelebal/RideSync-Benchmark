@@ -3,7 +3,6 @@ package com.ridesync.service;
 import com.ridesync.dto.LocationUpdateDto;
 import com.ridesync.model.LocationUpdate;
 import com.ridesync.model.Ride;
-import com.ridesync.model.RideStatus;
 import com.ridesync.model.User;
 import com.ridesync.repository.LocationUpdateRepository;
 import com.ridesync.repository.RideRepository;
@@ -15,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -50,7 +49,8 @@ public class LocationService {
         locationUpdate.setSpeed(locationDto.getSpeed());
         locationUpdate.setHeading(locationDto.getHeading());
         locationUpdate.setAccuracy(locationDto.getAccuracy());
-        locationUpdate.setDeviceId(locationDto.getDeviceId());
+        // TODO: Need to get Device entity from deviceId
+        // locationUpdate.setDevice(device);
         locationUpdate.setTimestamp(locationDto.getTimestamp() != null ? locationDto.getTimestamp() : LocalDateTime.now());
         
         LocationUpdate savedUpdate = locationUpdateRepository.save(locationUpdate);
@@ -61,12 +61,22 @@ public class LocationService {
         return savedUpdate;
     }
     
-    public List<LocationUpdate> getLocationUpdatesForRide(Long rideId) {
+    public List<LocationUpdate> getLocationUpdatesForRide(UUID rideId) {
         return locationUpdateRepository.findByRideIdOrderByTimestampDesc(rideId);
     }
     
-    public List<LocationUpdate> getLocationUpdatesForUser(Long userId) {
+    public List<LocationUpdate> getLocationUpdatesForUser(UUID userId) {
         return locationUpdateRepository.findByUserIdOrderByTimestampDesc(userId);
+    }
+    
+    // Get locations of all group members during a specific ride
+    public List<LocationUpdate> getGroupLocationUpdatesForRide(UUID groupId, UUID rideId) {
+        return locationUpdateRepository.findByGroupIdAndRideIdOrderByTimestampDesc(groupId, rideId);
+    }
+    
+    // Get current locations of all active group members
+    public List<LocationUpdate> getCurrentGroupLocations(UUID groupId) {
+        return locationUpdateRepository.findCurrentGroupLocations(groupId);
     }
     
     // BUG T13: Location data leakage - unrestricted API query
@@ -81,11 +91,11 @@ public class LocationService {
         return locationUpdateRepository.findNearbyLocationUpdates(latitude, longitude, radius);
     }
     
-    public List<LocationUpdate> getLocationUpdatesByDeviceId(Long rideId, String deviceId) {
+    public List<LocationUpdate> getLocationUpdatesByDeviceId(UUID rideId, UUID deviceId) {
         return locationUpdateRepository.findByRideIdAndDeviceId(rideId, deviceId);
     }
     
-    public List<LocationUpdate> getRecentLocationUpdates(Long rideId, LocalDateTime since) {
+    public List<LocationUpdate> getRecentLocationUpdates(UUID rideId, LocalDateTime since) {
         return locationUpdateRepository.findByRideIdAndTimestampAfter(rideId, since);
     }
     

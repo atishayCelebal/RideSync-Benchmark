@@ -8,20 +8,21 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface RideRepository extends JpaRepository<Ride, Long> {
+public interface RideRepository extends JpaRepository<Ride, UUID> {
     
-    List<Ride> findByGroupIdAndIsActiveTrue(Long groupId);
+    List<Ride> findByGroupIdAndIsActiveTrue(UUID groupId);
     
-    List<Ride> findByUserIdAndIsActiveTrue(Long userId);
+    List<Ride> findByUserIdAndIsActiveTrue(UUID userId);
     
     @Query("SELECT r FROM Ride r WHERE r.group.id = :groupId AND r.status = :status AND r.isActive = true")
-    List<Ride> findByGroupIdAndStatus(@Param("groupId") Long groupId, @Param("status") RideStatus status);
+    List<Ride> findByGroupIdAndStatus(@Param("groupId") UUID groupId, @Param("status") RideStatus status);
     
     @Query("SELECT r FROM Ride r WHERE r.status = :status AND r.isActive = true")
     List<Ride> findByStatus(@Param("status") RideStatus status);
     
     @Query("SELECT r FROM Ride r WHERE r.group.id = :groupId AND r.isActive = true ORDER BY r.createdAt DESC")
-    List<Ride> findActiveByGroupIdOrderByCreatedAtDesc(@Param("groupId") Long groupId);
+    List<Ride> findActiveByGroupIdOrderByCreatedAtDesc(@Param("groupId") UUID groupId);
 }

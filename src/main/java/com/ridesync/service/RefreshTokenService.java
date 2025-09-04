@@ -33,7 +33,6 @@ public class RefreshTokenService {
                 .user(user)
                 .expiryDate(LocalDateTime.now().plusSeconds(refreshTokenExpirationMs))
                 .isRevoked(false)
-                .createdAt(LocalDateTime.now())
                 .build();
         
         return refreshTokenRepository.save(refreshToken);

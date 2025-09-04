@@ -39,7 +39,7 @@ public class Ride extends BaseEntity {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
-    private User user;
+    private User createdBy;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
@@ -65,10 +65,10 @@ public class Ride extends BaseEntity {
     private Set<Alert> alerts = new HashSet<>();
     
     // Custom constructor for creating rides
-    public Ride(String name, String description, Group group, User user) {
+    public Ride(String name, String description, Group group, User createdBy) {
         this.name = name;
         this.description = description;
         this.group = group;
-        this.user = user;
+        this.createdBy = createdBy;
     }
 }

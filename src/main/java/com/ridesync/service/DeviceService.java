@@ -1,106 +1,29 @@
 package com.ridesync.service;
 
 import com.ridesync.dto.DeviceRequestDto;
-import com.ridesync.exception.ResourceNotFoundException;
 import com.ridesync.model.Device;
 import com.ridesync.model.DeviceType;
-import com.ridesync.model.User;
-import com.ridesync.repository.DeviceRepository;
-import com.ridesync.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Service
-@Transactional
-@RequiredArgsConstructor
-public class DeviceService {
+public interface DeviceService {
     
-    private final DeviceRepository deviceRepository;
-    private final UserRepository userRepository;
+    Device registerDevice(String deviceName, String deviceId, DeviceType deviceType, 
+                         String osVersion, String appVersion, Double gpsAccuracy, UUID userId);
     
-    public Device registerDevice(String deviceName, String deviceId, DeviceType deviceType, 
-                                String osVersion, String appVersion, Double gpsAccuracy, UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
-        
-        Device device = Device.builder()
-                .deviceName(deviceName)
-                .deviceId(deviceId)
-                .deviceType(deviceType)
-                .osVersion(osVersion)
-                .appVersion(appVersion)
-                .gpsAccuracy(gpsAccuracy)
-                .lastSeen(LocalDateTime.now())
-                .isActive(true)
-                .user(user)
-                .build();
-        
-        return deviceRepository.save(device);
-    }
+    List<Device> getUserDevices(UUID userId);
     
-    public List<Device> getUserDevices(UUID userId) {
-        return deviceRepository.findByUserIdAndIsActiveTrue(userId);
-    }
+    Optional<Device> findById(UUID deviceId);
     
-    public Optional<Device> findById(UUID deviceId) {
-        return deviceRepository.findById(deviceId);
-    }
+    Device updateDevice(UUID deviceId, DeviceRequestDto deviceRequest);
     
-    public Device updateDevice(UUID deviceId, DeviceRequestDto deviceRequest) {
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Device", "id", deviceId));
-        
-        device.setDeviceName(deviceRequest.getDeviceName());
-        device.setOsVersion(deviceRequest.getOsVersion());
-        device.setAppVersion(deviceRequest.getAppVersion());
-        device.setGpsAccuracy(deviceRequest.getGpsAccuracy());
-        device.setUpdatedAt(LocalDateTime.now());
-        
-        return deviceRepository.save(device);
-    }
+    void removeDevice(UUID deviceId);
     
-    public void removeDevice(UUID deviceId) {
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Device", "id", deviceId));
-        
-        device.setIsActive(false);
-        device.setUpdatedAt(LocalDateTime.now());
-        deviceRepository.save(device);
-    }
+    Device activateDevice(UUID deviceId);
     
-    public Device activateDevice(UUID deviceId) {
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Device", "id", deviceId));
-        
-        device.setIsActive(true);
-        device.setUpdatedAt(LocalDateTime.now());
-        
-        return deviceRepository.save(device);
-    }
+    Device deactivateDevice(UUID deviceId);
     
-    public Device deactivateDevice(UUID deviceId) {
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Device", "id", deviceId));
-        
-        device.setIsActive(false);
-        device.setUpdatedAt(LocalDateTime.now());
-        
-        return deviceRepository.save(device);
-    }
-    
-    public Device updateLastSeen(UUID deviceId) {
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Device", "id", deviceId));
-        
-        device.setLastSeen(LocalDateTime.now());
-        device.setUpdatedAt(LocalDateTime.now());
-        
-        return deviceRepository.save(device);
-    }
+    Device updateLastSeen(UUID deviceId);
 }

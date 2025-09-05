@@ -25,4 +25,10 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
     
     @Query("SELECT gm FROM GroupMember gm WHERE gm.group.id = :groupId AND gm.user.id = :userId AND gm.isActive = true")
     Optional<GroupMember> findActiveMembership(@Param("groupId") UUID groupId, @Param("userId") UUID userId);
+    
+    boolean existsByGroupIdAndUserIdAndIsActiveTrue(UUID groupId, UUID userId);
+    
+    boolean existsByGroupIdAndUserIdAndRoleAndIsActiveTrue(UUID groupId, UUID userId, GroupRole role);
+    
+    Optional<GroupMember> findByGroupIdAndUserId(UUID groupId, UUID userId);
 }

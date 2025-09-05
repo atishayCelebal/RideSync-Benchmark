@@ -1,6 +1,7 @@
 package com.ridesync.service.impl;
 
 import com.ridesync.dto.GroupInviteDto;
+import com.ridesync.exception.AuthorizationException;
 import com.ridesync.exception.ResourceNotFoundException;
 import com.ridesync.model.Group;
 import com.ridesync.model.GroupMember;
@@ -82,19 +83,34 @@ public class GroupServiceImpl implements GroupService {
         return groupMemberRepository.save(member);
     }
     
-    // BUG T02: Invite via Email lacks Admin role check – Anyone can send invites
+    // FIXED T02: Invite via Email now has proper Admin role check
     public void sendGroupInvite(GroupInviteDto inviteDto, UUID senderId) {
-        // BUG T02: No admin role check - anyone can send invites
+        // Find the group
         Group group = groupRepository.findById(inviteDto.getGroupId())
                 .orElseThrow(() -> new ResourceNotFoundException("Group", "id", inviteDto.getGroupId()));
         
+        // Find the sender
         User sender = userRepository.findById(senderId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", senderId));
         
-        // BUG T02: No validation that sender is admin of the group
-        // This should check if sender is admin before allowing invite
+        // FIXED T02: Check if sender is a member of the group
+        Optional<GroupMember> membership = groupMemberRepository.findActiveMembership(group.getId(), senderId);
+        if (membership.isEmpty()) {
+            throw new AuthorizationException("User is not a member of this group");
+        }
         
-        // Simulate sending invite (in real app, would send email/SMS)
+        // FIXED T02: Check if sender has admin role
+        GroupMember member = membership.get();
+        if (member.getRole() != GroupRole.ADMIN) {
+            throw new AuthorizationException("Only group administrators can send invites");
+        }
+        
+        // FIXED T02: Additional check - verify user is active
+        if (!member.getIsActive()) {
+            throw new AuthorizationException("User membership is not active");
+        }
+        
+        // All validations passed - send the invite
         System.out.println("Sending invite from " + sender.getUsername() + " to " + inviteDto.getEmail());
     }
     

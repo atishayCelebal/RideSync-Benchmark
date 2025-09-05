@@ -69,6 +69,24 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Access denied", "ACCESS_DENIED"));
     }
 
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiResponse<String>> handleSecurityException(
+            SecurityException ex, WebRequest request) {
+        
+        log.warn("Security violation: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage(), "SECURITY_VIOLATION"));
+    }
+
+    @ExceptionHandler(AuthorizationException.class)
+    public ResponseEntity<ApiResponse<String>> handleAuthorizationException(
+            AuthorizationException ex, WebRequest request) {
+        
+        log.warn("Authorization error: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage(), "AUTHORIZATION_ERROR"));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<String>> handleResourceNotFoundException(
             ResourceNotFoundException ex, WebRequest request) {

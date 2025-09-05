@@ -1,6 +1,7 @@
 package com.ridesync.service;
 
 import com.ridesync.dto.GroupInviteDto;
+import com.ridesync.exception.AuthorizationException;
 import com.ridesync.exception.ResourceNotFoundException;
 import com.ridesync.model.Group;
 import com.ridesync.model.GroupMember;
@@ -126,8 +127,8 @@ class GroupServiceT02Test {
     }
 
     @Test
-    @DisplayName("T02-BUG: Regular member can send invites without admin check")
-    void testRegularMemberCanSendInvite_BugT02() {
+    @DisplayName("T02-FIXED: Regular member cannot send invites - proper admin check")
+    void testRegularMemberCannotSendInvite_Fixed() {
         // Given - regular member tries to send invite
         when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
         when(userRepository.findById(regularUser.getId())).thenReturn(Optional.of(regularUser));
@@ -135,10 +136,13 @@ class GroupServiceT02Test {
                 .thenReturn(Optional.of(regularMember)); // Regular member, not admin
 
         // When & Then
-        // BUG T02: This test should FAIL because regular member should not be able to send invites
-        assertThrows(Exception.class, () -> {
+        // FIXED T02: This should now throw AuthorizationException because regular member cannot send invites
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
             groupService.sendGroupInvite(inviteDto, regularUser.getId());
-        }, "T02 BUG: Regular member should not be able to send invites - this test should FAIL");
+        }, "Regular member should not be able to send invites");
+
+        // Verify the exception message
+        assertEquals("Only group administrators can send invites", exception.getMessage());
 
         // Verify that admin role check was performed
         verify(groupMemberRepository, times(1)).findActiveMembership(testGroup.getId(), regularUser.getId());
@@ -149,8 +153,8 @@ class GroupServiceT02Test {
     }
 
     @Test
-    @DisplayName("T02-BUG: Non-member can send invites without admin check")
-    void testNonMemberCanSendInvite_BugT02() {
+    @DisplayName("T02-FIXED: Non-member cannot send invites - proper membership check")
+    void testNonMemberCannotSendInvite_Fixed() {
         // Given - non-member tries to send invite
         when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
         when(userRepository.findById(nonMemberUser.getId())).thenReturn(Optional.of(nonMemberUser));
@@ -158,12 +162,15 @@ class GroupServiceT02Test {
                 .thenReturn(Optional.empty()); // Not a member
 
         // When & Then
-        // BUG T02: This test should FAIL because non-member should not be able to send invites
-        assertThrows(Exception.class, () -> {
+        // FIXED T02: This should now throw AuthorizationException because non-member cannot send invites
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
             groupService.sendGroupInvite(inviteDto, nonMemberUser.getId());
-        }, "T02 BUG: Non-member should not be able to send invites - this test should FAIL");
+        }, "Non-member should not be able to send invites");
 
-        // Verify that admin role check was performed
+        // Verify the exception message
+        assertEquals("User is not a member of this group", exception.getMessage());
+
+        // Verify that membership check was performed
         verify(groupMemberRepository, times(1)).findActiveMembership(testGroup.getId(), nonMemberUser.getId());
         
         // Verify that group and user were found
@@ -172,8 +179,8 @@ class GroupServiceT02Test {
     }
 
     @Test
-    @DisplayName("T02-BUG: Anyone can send invites without proper authorization")
-    void testAnyoneCanSendInvite_BugT02() {
+    @DisplayName("T02-FIXED: Anyone cannot send invites - proper authorization check")
+    void testAnyoneCannotSendInvite_Fixed() {
         // Given - any user tries to send invite
         when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
         when(userRepository.findById(any(UUID.class))).thenReturn(Optional.of(regularUser));
@@ -181,10 +188,13 @@ class GroupServiceT02Test {
                 .thenReturn(Optional.empty()); // Not a member
 
         // When & Then
-        // BUG T02: This test should FAIL because there should be proper authorization check
-        assertThrows(Exception.class, () -> {
+        // FIXED T02: This should now throw AuthorizationException because proper authorization check exists
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
             groupService.sendGroupInvite(inviteDto, UUID.randomUUID());
-        }, "T02 BUG: Should check authorization before allowing invites - this test should FAIL");
+        }, "Should check authorization before allowing invites");
+
+        // Verify the exception message
+        assertEquals("User is not a member of this group", exception.getMessage());
 
         // Verify that proper authorization check was performed
         verify(groupMemberRepository, times(1)).findActiveMembership(eq(testGroup.getId()), any(UUID.class));
@@ -195,19 +205,22 @@ class GroupServiceT02Test {
     }
 
     @Test
-    @DisplayName("T02-BUG: No role validation in sendGroupInvite method")
-    void testNoRoleValidation_BugT02() {
-        // Given - method should validate admin role but doesn't
+    @DisplayName("T02-FIXED: Role validation now works in sendGroupInvite method")
+    void testRoleValidationWorks_Fixed() {
+        // Given - method now validates admin role
         when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
         when(userRepository.findById(regularUser.getId())).thenReturn(Optional.of(regularUser));
         when(groupMemberRepository.findActiveMembership(testGroup.getId(), regularUser.getId()))
                 .thenReturn(Optional.of(regularMember)); // Regular member, not admin
 
         // When & Then
-        // BUG T02: This test should FAIL because method should validate admin role
-        assertThrows(Exception.class, () -> {
+        // FIXED T02: This should now throw AuthorizationException because method validates admin role
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
             groupService.sendGroupInvite(inviteDto, regularUser.getId());
-        }, "T02 BUG: Method should validate admin role before sending invites - this test should FAIL");
+        }, "Method should validate admin role before sending invites");
+
+        // Verify the exception message
+        assertEquals("Only group administrators can send invites", exception.getMessage());
 
         // Verify that admin role validation was performed
         verify(groupMemberRepository, times(1)).findActiveMembership(testGroup.getId(), regularUser.getId());
@@ -218,19 +231,22 @@ class GroupServiceT02Test {
     }
 
     @Test
-    @DisplayName("T02-BUG: Missing admin role check allows unauthorized invites")
-    void testMissingAdminRoleCheck_BugT02() {
-        // Given - system should check if user is admin but doesn't
+    @DisplayName("T02-FIXED: Admin role check now prevents unauthorized invites")
+    void testAdminRoleCheckPreventsUnauthorizedInvites_Fixed() {
+        // Given - system now checks if user is admin
         when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
         when(userRepository.findById(regularUser.getId())).thenReturn(Optional.of(regularUser));
         when(groupMemberRepository.findActiveMembership(testGroup.getId(), regularUser.getId()))
                 .thenReturn(Optional.of(regularMember)); // Regular member, not admin
 
         // When & Then
-        // BUG T02: This test should FAIL because admin role check is missing
-        assertThrows(Exception.class, () -> {
+        // FIXED T02: This should now throw AuthorizationException because admin role check exists
+        AuthorizationException exception = assertThrows(AuthorizationException.class, () -> {
             groupService.sendGroupInvite(inviteDto, regularUser.getId());
-        }, "T02 BUG: Missing admin role check allows unauthorized invites - this test should FAIL");
+        }, "Admin role check should prevent unauthorized invites");
+
+        // Verify the exception message
+        assertEquals("Only group administrators can send invites", exception.getMessage());
 
         // Verify that admin role was checked
         verify(groupMemberRepository, times(1)).findActiveMembership(testGroup.getId(), regularUser.getId());
@@ -246,19 +262,20 @@ class GroupServiceT02Test {
         // Given - admin user tries to send invite
         when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
         when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+        when(groupMemberRepository.findActiveMembership(testGroup.getId(), adminUser.getId()))
+                .thenReturn(Optional.of(adminMember)); // Admin member
 
         // When
-        // This test shows what SHOULD happen when the bug is fixed
-        // Currently it will pass because the bug allows anyone to send invites
+        // FIXED T02: This should now work because admin has proper permissions
         assertDoesNotThrow(() -> {
             groupService.sendGroupInvite(inviteDto, adminUser.getId());
-        }, "Currently admin can send invites (due to bug), but this should be properly validated");
+        }, "Admin should be able to send invites");
 
         // Verify that group and user were found
         verify(groupRepository, times(1)).findById(testGroup.getId());
         verify(userRepository, times(1)).findById(adminUser.getId());
         
-        // Note: When bug is fixed, this should also verify admin role check
-        // verify(groupMemberRepository, times(1)).findActiveMembership(testGroup.getId(), adminUser.getId());
+        // Verify that admin role check was performed
+        verify(groupMemberRepository, times(1)).findActiveMembership(testGroup.getId(), adminUser.getId());
     }
 }

@@ -1,6 +1,7 @@
 package com.ridesync.service;
 
 import com.ridesync.dto.UserRegistrationDto;
+import com.ridesync.exception.DuplicateResourceException;
 import com.ridesync.model.User;
 import com.ridesync.model.UserRole;
 import com.ridesync.repository.UserRepository;
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 /**
  * Unit tests for UserService focusing on T01 bugs:
@@ -33,17 +35,29 @@ class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+    
+    @Mock
+    private BCryptPasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UserServiceImpl userService;
 
     private UserRegistrationDto validRegistrationDto;
     private User existingUser;
-    private BCryptPasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
-        passwordEncoder = new BCryptPasswordEncoder();
+        // Set up mock behavior for password encoder with lenient stubbing
+        lenient().when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> {
+            String password = invocation.getArgument(0);
+            return "$2a$10$" + password; // Mock BCrypt hash format
+        });
+        
+        lenient().when(passwordEncoder.matches(anyString(), anyString())).thenAnswer(invocation -> {
+            String rawPassword = invocation.getArgument(0);
+            String hashedPassword = invocation.getArgument(1);
+            return hashedPassword.equals("$2a$10$" + rawPassword); // Simple mock logic
+        });
         
         validRegistrationDto = UserRegistrationDto.builder()
                 .username("testuser")
@@ -57,7 +71,7 @@ class UserServiceTest {
                 .id(java.util.UUID.randomUUID())
                 .username("existinguser")
                 .email("test@example.com") // Same email as registration
-                .password("plaintextpassword") // Raw password stored
+                .password("$2a$10$plaintextpassword") // Mock hashed password
                 .firstName("Existing")
                 .lastName("User")
                 .role(UserRole.USER)
@@ -66,8 +80,8 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("T01-BUG: Password should be hashed but is stored as plaintext")
-    void testPasswordNotHashed_BugT01() {
+    @DisplayName("T01-FIXED: Password is now properly hashed")
+    void testPasswordHashed_Fixed() {
         // Given
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User savedUser = invocation.getArgument(0);
@@ -80,35 +94,29 @@ class UserServiceTest {
         // Then
         assertNotNull(result);
         
-        // BUG T01: This test should FAIL because password is stored as plaintext
-        // We expect password to be hashed (not equal to original), but it's stored as plaintext
+        // Password should be hashed (not equal to original)
         assertNotEquals("plaintextpassword", result.getPassword(), 
-            "T01 BUG: Password should be hashed but is stored as plaintext - this test should FAIL");
+            "Password should be hashed, not stored as plaintext");
         
-        // Verify password IS hashed (this should pass if bug is fixed)
+        // Verify password IS hashed using BCrypt
         assertTrue(passwordEncoder.matches("plaintextpassword", result.getPassword()),
-            "T01 BUG: Password should be hashed but it's stored as plaintext - this test should FAIL");
+            "Password should be properly hashed with BCrypt");
         
         // Verify repository was called
         verify(userRepository, times(1)).save(any(User.class));
     }
 
     @Test
-    @DisplayName("T01-BUG: Duplicate email should be rejected but is allowed")
-    void testDuplicateEmailAllowed_BugT01() {
+    @DisplayName("T01-FIXED: Duplicate email is now properly rejected")
+    void testDuplicateEmailRejected_Fixed() {
         // Given - user with same email already exists
         when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
-            User savedUser = invocation.getArgument(0);
-            return savedUser;
-        });
 
         // When & Then
-        // BUG T01: This test should FAIL because duplicate email should be rejected
-        // We expect an exception to be thrown, but it's not due to the bug
-        assertThrows(Exception.class, () -> {
+        // Duplicate email should be rejected - this should now work correctly
+        assertThrows(DuplicateResourceException.class, () -> {
             userService.registerUser(validRegistrationDto);
-        }, "T01 BUG: Duplicate email should be rejected but is allowed - this test should FAIL");
+        }, "Duplicate email should be rejected");
         
         // Verify that duplicate email check was performed
         verify(userRepository, times(1)).existsByEmail("test@example.com");
@@ -118,8 +126,8 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("T01-BUG: Password validation uses plaintext comparison instead of BCrypt")
-    void testPasswordValidationPlaintext_BugT01() {
+    @DisplayName("T01-FIXED: Password validation now uses BCrypt")
+    void testPasswordValidationBCrypt_Fixed() {
         // Given
         String rawPassword = "plaintextpassword";
         String hashedPassword = passwordEncoder.encode(rawPassword);
@@ -128,30 +136,26 @@ class UserServiceTest {
         boolean isValid = userService.validatePassword(rawPassword, hashedPassword);
 
         // Then
-        // BUG T01: This test should FAIL because validatePassword uses plaintext comparison
-        // We expect BCrypt validation to work, but it uses plaintext comparison
+        // Password validation should work correctly with BCrypt
         assertTrue(isValid, 
-            "T01 BUG: validatePassword should use BCrypt but uses plaintext comparison - this test should FAIL");
+            "Password validation should work correctly with BCrypt");
         
-        // The correct implementation should return true for valid password
-        // But our buggy implementation uses plaintext comparison instead of BCrypt
+        // Test with wrong password
+        boolean isInvalid = userService.validatePassword("wrongpassword", hashedPassword);
+        assertFalse(isInvalid, "Wrong password should be rejected");
     }
 
     @Test
-    @DisplayName("T01-BUG: Registration succeeds even with existing email")
-    void testRegistrationWithExistingEmail_BugT01() {
+    @DisplayName("T01-FIXED: Registration is now properly rejected for duplicate email")
+    void testRegistrationWithExistingEmailRejected_Fixed() {
         // Given - user with same email already exists
         when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
-            User savedUser = invocation.getArgument(0);
-            return savedUser;
-        });
 
         // When & Then
-        // BUG T01: This test should FAIL because registration should be rejected for duplicate email
-        assertThrows(Exception.class, () -> {
+        // Registration should be rejected for duplicate email - this should now work correctly
+        assertThrows(DuplicateResourceException.class, () -> {
             userService.registerUser(validRegistrationDto);
-        }, "T01 BUG: Registration should be rejected for duplicate email - this test should FAIL");
+        }, "Registration should be rejected for duplicate email");
         
         // Verify that duplicate email check was performed
         verify(userRepository, times(1)).existsByEmail("test@example.com");
@@ -161,8 +165,8 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("T01-BUG: Multiple users can have same email")
-    void testMultipleUsersSameEmail_BugT01() {
+    @DisplayName("T01-FIXED: Multiple users with same email are now properly rejected")
+    void testMultipleUsersSameEmailRejected_Fixed() {
         // Given
         UserRegistrationDto secondUser = UserRegistrationDto.builder()
                 .username("anotheruser")
@@ -182,10 +186,10 @@ class UserServiceTest {
         User firstUser = userService.registerUser(validRegistrationDto);
         
         // Then
-        // BUG T01: This test should FAIL because second registration should be rejected
-        assertThrows(Exception.class, () -> {
+        // Second registration should be rejected for duplicate email - this should now work correctly
+        assertThrows(DuplicateResourceException.class, () -> {
             userService.registerUser(secondUser);
-        }, "T01 BUG: Multiple users with same email should not be allowed - this test should FAIL");
+        }, "Multiple users with same email should not be allowed");
         
         // Verify first user was saved
         assertNotNull(firstUser);

@@ -2,12 +2,14 @@ package com.ridesync.service.impl;
 
 import com.ridesync.dto.UserRegistrationDto;
 import com.ridesync.dto.UserUpdateDto;
+import com.ridesync.exception.DuplicateResourceException;
 import com.ridesync.exception.ResourceNotFoundException;
 import com.ridesync.model.User;
 import com.ridesync.model.UserRole;
 import com.ridesync.repository.UserRepository;
 import com.ridesync.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,14 +24,24 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
     
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
     
     // BUG T01: No password hashing, duplicate emails allowed
     public User registerUser(UserRegistrationDto registrationDto) {
         // BUG T01: No duplicate email check
+        if (userRepository.existsByEmail(registrationDto.getEmail())) {
+            throw new DuplicateResourceException("Email", "email", registrationDto.getEmail());
+        }
+        
+        // Check for duplicate username
+        if (userRepository.existsByUsername(registrationDto.getUsername())) {
+            throw new DuplicateResourceException("Username", "username", registrationDto.getUsername());
+        }
+        
         User user = new User();
         user.setUsername(registrationDto.getUsername());
         user.setEmail(registrationDto.getEmail());
-        user.setPassword(registrationDto.getPassword()); // BUG T01: Raw password storage
+        user.setPassword(passwordEncoder.encode(registrationDto.getPassword())); // BUG T01: Raw password storage
         user.setFirstName(registrationDto.getFirstName());
         user.setLastName(registrationDto.getLastName());
         user.setRole(UserRole.USER);
@@ -98,9 +110,8 @@ public class UserServiceImpl implements UserService {
         return userRepository.existsByEmail(email);
     }
     
-    // BUG T01: No password validation method
     public boolean validatePassword(String rawPassword, String hashedPassword) {
-        // BUG T01: Direct string comparison instead of BCrypt
-        return rawPassword.equals(hashedPassword);
+        // Use BCrypt for password validation
+        return passwordEncoder.matches(rawPassword, hashedPassword);
     }
 }

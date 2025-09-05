@@ -9,13 +9,14 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
 @Data
 @Builder
 @NoArgsConstructor
@@ -35,7 +36,7 @@ public class User extends BaseEntity {
     
     @NotBlank
     @Email
-    @Column(name = "email")
+    @Column(name = "email", unique = true, nullable = false)
     // BUG T01: Missing @Column(unique=true) - allows duplicate emails
     private String email;
     
@@ -80,5 +81,15 @@ public class User extends BaseEntity {
         this.username = username;
         this.email = email;
         this.password = password; // BUG T01: Raw password storage
+    }
+    
+    @PrePersist
+    @PreUpdate
+    private void hashPassword() {
+        if (this.password != null && !this.password.startsWith("$2a$")) {
+            // Only hash if password is not already hashed (BCrypt hashes start with $2a$)
+            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+            this.password = encoder.encode(this.password);
+        }
     }
 }

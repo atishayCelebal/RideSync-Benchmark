@@ -11,6 +11,7 @@ import com.ridesync.model.LocationUpdate;
 import com.ridesync.model.User;
 import com.ridesync.model.UserRole;
 import com.ridesync.service.LocationService;
+import com.ridesync.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -47,6 +49,9 @@ class LocationControllerT03FixedTest {
 
     @Mock
     private LocationService locationService;
+
+    @Mock
+    private UserService userService;
 
     @InjectMocks
     private LocationController locationController;
@@ -118,6 +123,10 @@ class LocationControllerT03FixedTest {
         lenient().when(locationService.getLocationUpdatesForRide(any(UUID.class)))
                 .thenReturn(List.of(mockLocationUpdate));
 
+        // Mock userService
+        lenient().when(userService.findByUsername(any(String.class)))
+                .thenReturn(Optional.of(mockUser));
+
         // Create a manual LocationMapper implementation to avoid MapStruct mocking issues
         LocationMapper locationMapper = new LocationMapper() {
             @Override
@@ -155,38 +164,38 @@ class LocationControllerT03FixedTest {
     }
 
     @Test
-    @DisplayName("T03-BUG: Location update endpoint is accessible without authentication")
-    void testLocationUpdateAccessibleWithoutAuth_BugT03() throws Exception {
+    @DisplayName("T03-FIXED: Location update endpoint now requires authentication")
+    void testLocationUpdateRequiresAuth_Fixed() throws Exception {
         // Given - No authentication
         String locationJson = objectMapper.writeValueAsString(validLocationDto);
 
         // When & Then
-        // BUG T03: This test should FAIL because endpoint should require authentication
+        // FIXED T03: This test should now PASS because endpoint requires authentication
         mockMvc.perform(post("/api/v1/location/update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(locationJson))
-                .andExpect(status().isUnauthorized()) // This should fail - currently returns 200 OK
+                .andExpect(status().isUnauthorized()) // This should now pass - returns 401
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value("Authentication required"));
     }
 
     @Test
-    @DisplayName("T03-BUG: Location data is accessible without authentication")
-    void testLocationDataAccessibleWithoutAuth_BugT03() throws Exception {
+    @DisplayName("T03-FIXED: Location data now requires authentication")
+    void testLocationDataRequiresAuth_Fixed() throws Exception {
         // Given - No authentication
         UUID rideId = UUID.randomUUID();
 
         // When & Then
-        // BUG T03: This test should FAIL because endpoint should require authentication
+        // FIXED T03: This test should now PASS because endpoint requires authentication
         mockMvc.perform(get("/api/v1/location/ride/{rideId}", rideId))
-                .andExpect(status().isUnauthorized()) // This should fail - currently returns 200 OK
+                .andExpect(status().isUnauthorized()) // This should now pass - returns 401
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value("Authentication required"));
     }
 
     @Test
-    @DisplayName("T03-BUG: Anyone can inject fake GPS data without authentication")
-    void testAnyoneCanInjectFakeGpsData_BugT03() throws Exception {
+    @DisplayName("T03-FIXED: Fake GPS data injection now requires authentication")
+    void testFakeGpsDataRequiresAuth_Fixed() throws Exception {
         // Given - Malicious user with fake GPS data
         LocationUpdateDto fakeLocationDto = LocationUpdateDto.builder()
                 .userId(UUID.randomUUID()) // Fake user ID
@@ -201,11 +210,11 @@ class LocationControllerT03FixedTest {
         String locationJson = objectMapper.writeValueAsString(fakeLocationDto);
 
         // When & Then
-        // BUG T03: This test should FAIL because endpoint should require authentication
+        // FIXED T03: This test should now PASS because endpoint requires authentication
         mockMvc.perform(post("/api/v1/location/update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(locationJson))
-                .andExpect(status().isUnauthorized()) // This should fail - currently returns 200 OK
+                .andExpect(status().isUnauthorized()) // This should now pass - returns 401
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value("Authentication required"));
     }

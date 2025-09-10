@@ -3,9 +3,9 @@
 
 -- Create users table
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(100) NOT NULL,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
@@ -18,7 +18,7 @@ CREATE TABLE users (
 
 -- Create groups table
 CREATE TABLE groups (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -30,7 +30,7 @@ CREATE TABLE groups (
 
 -- Create group_members table
 CREATE TABLE group_members (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     group_id UUID NOT NULL,
     user_id UUID NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'MEMBER',
@@ -45,7 +45,7 @@ CREATE TABLE group_members (
 
 -- Create rides table
 CREATE TABLE rides (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     group_id UUID NOT NULL,
@@ -60,9 +60,21 @@ CREATE TABLE rides (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- Create devices table
+CREATE TABLE devices (
+    id UUID PRIMARY KEY,
+    device_id VARCHAR(100) NOT NULL UNIQUE,
+    device_type VARCHAR(20) NOT NULL,
+    user_id UUID NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 -- Create location_updates table with PostGIS support
 CREATE TABLE location_updates (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     ride_id UUID NOT NULL,
     user_id UUID NOT NULL,
     latitude DOUBLE PRECISION NOT NULL,
@@ -76,13 +88,12 @@ CREATE TABLE location_updates (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ride_id) REFERENCES rides(id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (device_id) REFERENCES devices(id)
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Create alerts table
 CREATE TABLE alerts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     ride_id UUID NOT NULL,
     user_id UUID NOT NULL,
     device_id UUID,
@@ -101,7 +112,7 @@ CREATE TABLE alerts (
 
 -- Create refresh_tokens table for JWT refresh token management
 CREATE TABLE refresh_tokens (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     token VARCHAR(255) NOT NULL UNIQUE,
     user_id UUID NOT NULL,
     expiry_date TIMESTAMP NOT NULL,
@@ -114,7 +125,7 @@ CREATE TABLE refresh_tokens (
 
 -- Create devices table for tracking user devices
 CREATE TABLE devices (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     device_name VARCHAR(100) NOT NULL,
     device_id VARCHAR(100) NOT NULL UNIQUE,
     device_type VARCHAR(20) NOT NULL DEFAULT 'MOBILE',

@@ -27,6 +27,17 @@ public interface LocationUpdateRepository extends JpaRepository<LocationUpdate, 
     @Query("SELECT lu FROM LocationUpdate lu WHERE lu.ride.status = 'ACTIVE' ORDER BY lu.timestamp DESC")
     List<LocationUpdate> findAllActiveLocationUpdates();
     
+    // FIXED T13: Group-filtered query - only returns location updates from user's groups
+    @Query("SELECT lu FROM LocationUpdate lu " +
+           "JOIN lu.ride r " +
+           "JOIN r.group g " +
+           "JOIN g.groupMembers gm " +
+           "WHERE gm.user.id = :userId " +
+           "AND gm.isActive = true " +
+           "AND r.status = 'ACTIVE' " +
+           "ORDER BY lu.timestamp DESC")
+    List<LocationUpdate> findActiveLocationUpdatesByUserGroups(@Param("userId") UUID userId);
+    
     @Query("SELECT lu FROM LocationUpdate lu WHERE lu.ride.id = :rideId AND lu.device.id = :deviceId ORDER BY lu.timestamp DESC")
     List<LocationUpdate> findByRideIdAndDeviceId(@Param("rideId") UUID rideId, @Param("deviceId") UUID deviceId);
     

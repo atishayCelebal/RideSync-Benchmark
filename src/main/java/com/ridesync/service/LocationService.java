@@ -21,6 +21,9 @@ public interface LocationService {
     
     List<LocationUpdate> getAllActiveLocationUpdates();
     
+    // FIXED T13: Group-filtered method - only returns location updates from user's groups
+    List<LocationUpdate> getActiveLocationUpdatesByUserGroups(UUID userId);
+    
     List<LocationUpdate> getNearbyLocationUpdates(Double latitude, Double longitude, Double radius);
     
     List<LocationUpdate> getLocationUpdatesByDeviceId(UUID rideId, UUID deviceId);

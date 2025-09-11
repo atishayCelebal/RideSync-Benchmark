@@ -118,7 +118,7 @@ public class LocationController {
                 locationMapper.toLocationUpdateResponseDtoList(updates)));
     }
     
-    // FIXED T13: Location data leakage – now requires authentication
+    // FIXED T13: Location data leakage – now requires authentication and group filtering
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<List<LocationUpdateResponseDto>>> getAllActiveLocationUpdates() {
         // FIXED T03: Require authentication for active location access
@@ -127,7 +127,13 @@ public class LocationController {
             return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
         }
         
-        List<LocationUpdate> updates = locationService.getAllActiveLocationUpdates();
+        // FIXED T13: Get authenticated user and filter by their group memberships
+        String authenticatedUsername = authentication.getName();
+        User authenticatedUser = userService.findByUsername(authenticatedUsername)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // FIXED T13: Only return location updates from groups where user is a member
+        List<LocationUpdate> updates = locationService.getActiveLocationUpdatesByUserGroups(authenticatedUser.getId());
         return ResponseEntity.ok(ApiResponse.success("Active location updates retrieved successfully", 
                 locationMapper.toLocationUpdateResponseDtoList(updates)));
     }

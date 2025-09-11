@@ -80,6 +80,12 @@ public class LocationServiceImpl implements LocationService {
         return locationUpdateRepository.findAllActiveLocationUpdates();
     }
     
+    // FIXED T13: Group-filtered method - only returns location updates from user's groups
+    public List<LocationUpdate> getActiveLocationUpdatesByUserGroups(UUID userId) {
+        // FIXED T13: Only returns location updates from groups where user is an active member
+        return locationUpdateRepository.findActiveLocationUpdatesByUserGroups(userId);
+    }
+    
     // BUG T16: Inefficient nearby query - no bounding box filter
     public List<LocationUpdate> getNearbyLocationUpdates(Double latitude, Double longitude, Double radius) {
         // BUG T16: No spatial index optimization, scans all records

@@ -7,6 +7,7 @@ import com.ridesync.mapper.LocationMapper;
 import com.ridesync.model.LocationUpdate;
 import com.ridesync.model.User;
 import com.ridesync.service.LocationService;
+import com.ridesync.service.ValidationService;
 import com.ridesync.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,12 +27,14 @@ public class LocationController {
     private final LocationService locationService;
     private final LocationMapper locationMapper;
     private final UserService userService;
+    private final ValidationService validationService;
     
     // FIXED T03: Location API now requires authentication and user identity validation
     @PostMapping("/update")
     public ResponseEntity<ApiResponse<LocationUpdateResponseDto>> updateLocation(@Valid @RequestBody LocationUpdateDto locationDto) {
         // FIXED T03: Get authenticated user from security context
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        validationService.validateLocationUpdate(locationDto);
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
         }

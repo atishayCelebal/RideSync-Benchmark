@@ -1,45 +1,48 @@
 package com.ridesync.consumer;
 
-import com.ridesync.dto.LocationUpdateDto;
 import com.ridesync.model.LocationUpdate;
 import com.ridesync.model.Ride;
 import com.ridesync.model.RideStatus;
 import com.ridesync.service.AnomalyDetectionService;
 import com.ridesync.service.LocationService;
 import com.ridesync.service.RideService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 @Component
+@RequiredArgsConstructor
 public class LocationUpdateConsumer {
-    
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
-    
-    @Autowired
-    private LocationService locationService;
-    
-    @Autowired
-    private RideService rideService;
-    
-    @Autowired
-    private AnomalyDetectionService anomalyDetectionService;
+    private static final Logger logger = LoggerFactory.getLogger(LocationUpdateConsumer.class);
+    private final SimpMessagingTemplate messagingTemplate;
+    private final LocationService locationService;
+    private final RideService rideService;
+    private final AnomalyDetectionService anomalyDetectionService;
     
     // BUG T05: Kafka consumer processes inactive sessions
     // BUG T06: Malformed GPS payload crashes consumer
     @KafkaListener(topics = "location-updates", groupId = "ridesync-group")
     public void handleLocationUpdate(LocationUpdate locationUpdate) {
         try {
-            // BUG T05: No check if ride is active
-            // BUG T06: No validation of GPS payload - will crash on malformed data
+            // T06 FIXED: Validate GPS payload before processing
+            if (!isValidLocationUpdate(locationUpdate)) {
+                logger.warn("Invalid location update received, skipping: {}", locationUpdate);
+                return;
+            }
             
-            // Process location update regardless of ride status
+            // Check if ride is active (T05 bug fix)
+            if (!isRideActive(locationUpdate.getRide())) {
+                logger.warn("Ride is not active, skipping location update: {}", locationUpdate.getRide().getId());
+                return;
+            }
             locationService.processLocationUpdate(locationUpdate);
             
             // BUG T15: Over-broadcasting to all clients
@@ -58,13 +61,72 @@ public class LocationUpdateConsumer {
             anomalyDetectionService.detectAnomalies(locationUpdate.getRide().getId());
             
         } catch (Exception e) {
-            // BUG T06: Exception handling - consumer thread will halt
-            System.err.println("Error processing location update: " + e.getMessage());
-            e.printStackTrace();
-            // BUG T17: No retry mechanism on Kafka failure
-            throw new RuntimeException("Failed to process location update", e);
+            // T06 FIXED: Log error but don't halt consumer thread
+            logger.error("Error processing location update: {}", e.getMessage(), e);
+            // T06 FIXED: Don't re-throw exception to prevent consumer thread from halting
+            // Just log and continue processing other messages
         }
     }
+    private boolean isValidLocationUpdate(LocationUpdate locationUpdate) {
+        if (locationUpdate == null) {
+            logger.warn("Location update is null");
+            return false;
+        }
+        if (locationUpdate.getLatitude() == null) {
+            logger.warn("Latitude is required");
+            return false;
+        }
+        if (locationUpdate.getLongitude() == null) {
+            logger.warn("Longitude is required");
+            return false;
+        }
+        if (locationUpdate.getTimestamp() == null) {
+            logger.warn("Timestamp is required");
+            return false;
+        }
+        if (locationUpdate.getUser() == null) {
+            logger.warn("User is required");
+            return false;
+        }
+        if (locationUpdate.getRide() == null) {
+            logger.warn("Ride is required");
+            return false;
+        }
+        
+        // Validate coordinate ranges
+        if (locationUpdate.getLatitude() < -90.0 || locationUpdate.getLatitude() > 90.0) {
+            logger.warn("Latitude must be between -90 and 90, got: {}", locationUpdate.getLatitude());
+            return false;
+        }
+        if (locationUpdate.getLongitude() < -180.0 || locationUpdate.getLongitude() > 180.0) {
+            logger.warn("Longitude must be between -180 and 180, got: {}", locationUpdate.getLongitude());
+            return false;
+        }
+        
+        // Validate timestamp (not too old, not in future)
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime oneYearAgo = now.minusYears(1);
+        LocalDateTime oneHourFromNow = now.plusHours(1);
+        if (locationUpdate.getTimestamp().isBefore(oneYearAgo) || 
+            locationUpdate.getTimestamp().isAfter(oneHourFromNow)) {
+            logger.warn("Timestamp must be within reasonable range, got: {}", locationUpdate.getTimestamp());
+            return false;
+        }
+        
+        // Validate accuracy if present
+        if (locationUpdate.getAccuracy() != null && locationUpdate.getAccuracy() < 0) {
+            logger.warn("Accuracy must be non-negative, got: {}", locationUpdate.getAccuracy());
+            return false;
+        }
+        
+        return true;
+    }
+    private boolean isRideActive(Ride ride) {
+        return ride != null && 
+               (ride.getStatus() == RideStatus.ACTIVE || 
+                ride.getStatus() == RideStatus.PLANNED);
+    }
+    
     
     // BUG T17: Crash on Kafka drop – no retry
     @KafkaListener(topics = "ride-events", groupId = "ridesync-group")

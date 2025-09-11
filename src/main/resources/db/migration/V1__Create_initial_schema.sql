@@ -123,23 +123,6 @@ CREATE TABLE refresh_tokens (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Create devices table for tracking user devices
-CREATE TABLE devices (
-    id UUID PRIMARY KEY,
-    device_name VARCHAR(100) NOT NULL,
-    device_id VARCHAR(100) NOT NULL UNIQUE,
-    device_type VARCHAR(20) NOT NULL DEFAULT 'MOBILE',
-    os_version VARCHAR(50),
-    app_version VARCHAR(50),
-    gps_accuracy DOUBLE PRECISION,
-    last_seen TIMESTAMP,
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    user_id UUID NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
 -- Create indexes for better performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_username ON users(username);

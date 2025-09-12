@@ -72,6 +72,21 @@ public class GroupServiceImpl implements GroupService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         
+        // Check if user is already a member of this group
+        Optional<GroupMember> existingMember = groupMemberRepository.findByGroupIdAndUserId(groupId, userId);
+        if (existingMember.isPresent()) {
+            GroupMember member = existingMember.get();
+            if (member.getIsActive()) {
+                throw new IllegalArgumentException("User is already a member of this group");
+            } else {
+                // Reactivate the existing membership
+                member.setIsActive(true);
+                member.setRole(role);
+                member.setJoinedAt(LocalDateTime.now());
+                return groupMemberRepository.save(member);
+            }
+        }
+        
         GroupMember member = GroupMember.builder()
                 .group(group)
                 .user(user)

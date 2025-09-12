@@ -1,5 +1,6 @@
 package com.ridesync.config;
 
+import com.ridesync.filter.SessionValidationFilter;
 import com.ridesync.security.CustomUserDetailsService;
 import com.ridesync.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class SecurityConfig {
     
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
+    private final SessionValidationFilter sessionValidationFilter;
     
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -49,13 +51,14 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 // FIXED T03: Location API now requires authentication
                 .requestMatchers("/api/v1/location/**").authenticated()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
+            .addFilterBefore(sessionValidationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();

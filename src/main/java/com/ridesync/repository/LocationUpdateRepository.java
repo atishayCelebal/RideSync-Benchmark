@@ -31,7 +31,7 @@ public interface LocationUpdateRepository extends JpaRepository<LocationUpdate, 
     @Query("SELECT lu FROM LocationUpdate lu " +
            "JOIN lu.ride r " +
            "JOIN r.group g " +
-           "JOIN g.groupMembers gm " +
+           "JOIN g.members gm " +
            "WHERE gm.user.id = :userId " +
            "AND gm.isActive = true " +
            "AND r.status = 'ACTIVE' " +
@@ -59,12 +59,18 @@ public interface LocationUpdateRepository extends JpaRepository<LocationUpdate, 
     List<LocationUpdate> findCurrentGroupLocations(@Param("groupId") UUID groupId);
     
     // BUG T16: Inefficient nearby query - no bounding box filter
-    @Query("SELECT lu FROM LocationUpdate lu WHERE " +
-           "ST_DWithin(ST_GeogFromText(CONCAT('POINT(', lu.longitude, ' ', lu.latitude, ')')), " +
-           "ST_GeogFromText(CONCAT('POINT(', :longitude, ' ', :latitude, ')')), :radius) " +
-           "AND lu.ride.status = 'ACTIVE' " +
-           "ORDER BY lu.timestamp DESC")
+    @Query(value = """
+    SELECT * FROM location_updates lu 
+    JOIN rides r ON lu.ride_id = r.id 
+    WHERE ST_DWithin(
+        ST_GeogFromText(CONCAT('POINT(', lu.longitude, ' ', lu.latitude, ')')), 
+        ST_GeogFromText(CONCAT('POINT(', :longitude, ' ', :latitude, ')')), 
+        :radius
+    ) 
+    AND r.status = 'ACTIVE' 
+    ORDER BY lu.timestamp DESC
+    """, nativeQuery = true)
     List<LocationUpdate> findNearbyLocationUpdates(@Param("latitude") Double latitude, 
-                                                   @Param("longitude") Double longitude, 
-                                                   @Param("radius") Double radius);
+                                               @Param("longitude") Double longitude, 
+                                               @Param("radius") Double radius);
 }

@@ -8,6 +8,7 @@ import com.ridesync.dto.UserDto;
 import com.ridesync.dto.UserRegistrationDto;
 import com.ridesync.mapper.UserMapper;
 import com.ridesync.model.User;
+import com.ridesync.security.CustomUserPrincipal;
 import com.ridesync.security.JwtUtil;
 import com.ridesync.service.RefreshTokenService;
 import com.ridesync.service.UserService;
@@ -48,7 +49,8 @@ public class AuthController {
         );
         
         // Get user details from the authenticated principal (more efficient)
-        User user = (User) authentication.getPrincipal();
+        CustomUserPrincipal userPrincipal = (CustomUserPrincipal) authentication.getPrincipal();
+        User user = userPrincipal.getUser();
         
         // Generate access token (short-lived)
         String accessToken = jwtUtil.generateAccessToken(authentication.getName());

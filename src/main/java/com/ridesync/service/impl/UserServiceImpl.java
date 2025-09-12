@@ -9,7 +9,7 @@ import com.ridesync.model.UserRole;
 import com.ridesync.repository.UserRepository;
 import com.ridesync.service.UserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +24,7 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
     
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
     
     // BUG T01: No password hashing, duplicate emails allowed
     public User registerUser(UserRegistrationDto registrationDto) {

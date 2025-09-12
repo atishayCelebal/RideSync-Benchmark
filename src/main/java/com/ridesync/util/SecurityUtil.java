@@ -1,6 +1,7 @@
 package com.ridesync.util;
 
 import com.ridesync.model.User;
+import com.ridesync.security.CustomUserPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -11,8 +12,9 @@ public class SecurityUtil {
     
     public static User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof User) {
-            return (User) authentication.getPrincipal();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserPrincipal) {
+            CustomUserPrincipal userPrincipal = (CustomUserPrincipal) authentication.getPrincipal();
+            return userPrincipal.getUser();
         }
         throw new IllegalStateException("No authenticated user found");
     }

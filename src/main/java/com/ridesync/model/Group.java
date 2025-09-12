@@ -1,5 +1,7 @@
 package com.ridesync.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -19,6 +21,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Group extends BaseEntity {
     
     @Id
@@ -35,6 +38,7 @@ public class Group extends BaseEntity {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "admin_id", nullable = false)
+    @JsonIgnore
     private User admin;
     
     @Column(name = "is_active")
@@ -43,10 +47,12 @@ public class Group extends BaseEntity {
     
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
+    @JsonIgnore
     private Set<GroupMember> members = new HashSet<>();
     
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
+    @JsonIgnore
     private Set<Ride> rides = new HashSet<>();
     
     // Custom constructor for creating groups

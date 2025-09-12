@@ -11,7 +11,7 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface AlertMapper {
     
-    AlertMapper INSTANCE = Mappers.getMapper(AlertMapper.class);
+    // AlertMapper INSTANCE = Mappers.getMapper(AlertMapper.class);
     
     @Mapping(source = "ride.id", target = "rideId")
     @Mapping(source = "ride.name", target = "rideName")

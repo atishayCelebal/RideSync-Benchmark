@@ -15,8 +15,8 @@ public interface RideMapper {
     
     @Mapping(source = "group.id", target = "groupId")
     @Mapping(source = "group.name", target = "groupName")
-    @Mapping(source = "createdBy.id", target = "createdBy")
-    @Mapping(source = "createdBy.username", target = "createdByName")
+    @Mapping(source = "user.id", target = "createdBy")
+    @Mapping(source = "user.username", target = "createdByName")
     RideResponseDto toRideResponseDto(Ride ride);
     
     List<RideResponseDto> toRideResponseDtoList(List<Ride> rides);

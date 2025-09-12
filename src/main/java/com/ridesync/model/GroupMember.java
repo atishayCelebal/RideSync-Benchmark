@@ -1,5 +1,7 @@
 package com.ridesync.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,6 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class GroupMember extends BaseEntity {
     
     @Id
@@ -25,6 +28,7 @@ public class GroupMember extends BaseEntity {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
+    @JsonIgnore
     private Group group;
     
     @ManyToOne(fetch = FetchType.LAZY)

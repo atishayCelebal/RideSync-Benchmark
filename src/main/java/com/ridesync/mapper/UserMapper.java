@@ -22,5 +22,5 @@ public interface UserMapper {
     @Mapping(target = "username", source = "user.username")
     @Mapping(target = "role", source = "user.role")
     @Mapping(target = "email", source = "user.email")
-    AuthResponseDto toAuthResponseDto(User user, String token);
+    AuthResponseDto toAuthResponseDtoWithToken(User user, String token);
 }

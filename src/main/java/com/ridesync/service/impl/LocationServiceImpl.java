@@ -1,6 +1,7 @@
 package com.ridesync.service.impl;
 
 import com.ridesync.dto.LocationUpdateDto;
+import com.ridesync.dto.LocationUpdateKafkaDto;
 import com.ridesync.model.LocationUpdate;
 import com.ridesync.model.Ride;
 import com.ridesync.model.User;
@@ -25,7 +26,7 @@ public class LocationServiceImpl implements LocationService {
     private final LocationUpdateRepository locationUpdateRepository;
     private final RideRepository rideRepository;
     private final UserRepository userRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final KafkaTemplate<String, LocationUpdateKafkaDto> kafkaTemplate;
     
     // BUG T03: No JWT/session validation
     public LocationUpdate saveLocationUpdate(LocationUpdateDto locationDto) {
@@ -50,8 +51,24 @@ public class LocationServiceImpl implements LocationService {
         
         LocationUpdate savedUpdate = locationUpdateRepository.save(locationUpdate);
         
+        // Create Kafka DTO with essential data only
+        LocationUpdateKafkaDto kafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(savedUpdate.getId())
+                .userId(savedUpdate.getUser().getId())
+                .rideId(savedUpdate.getRide().getId())
+                .groupId(savedUpdate.getRide().getGroup().getId())
+                .latitude(savedUpdate.getLatitude())
+                .longitude(savedUpdate.getLongitude())
+                .altitude(savedUpdate.getAltitude())
+                .speed(savedUpdate.getSpeed())
+                .heading(savedUpdate.getHeading())
+                .accuracy(savedUpdate.getAccuracy())
+                .timestamp(savedUpdate.getTimestamp())
+                .deviceId(locationDto.getDeviceId())
+                .build();
+        
         // Publish to Kafka for real-time processing
-        kafkaTemplate.send("location-updates", savedUpdate);
+        kafkaTemplate.send("location-updates", kafkaDto);
         
         return savedUpdate;
     }

@@ -1,5 +1,6 @@
 package com.ridesync.consumer;
 
+import com.ridesync.dto.LocationUpdateKafkaDto;
 import com.ridesync.model.LocationUpdate;
 import com.ridesync.model.Ride;
 import com.ridesync.model.RideStatus;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -30,35 +32,49 @@ public class LocationUpdateConsumer {
     // BUG T05: Kafka consumer processes inactive sessions
     // BUG T06: Malformed GPS payload crashes consumer
     @KafkaListener(topics = "location-updates", groupId = "ridesync-group")
-    public void handleLocationUpdate(LocationUpdate locationUpdate) {
+    public void handleLocationUpdate(LocationUpdateKafkaDto kafkaDto) {
         try {
             // T06 FIXED: Validate GPS payload before processing
-            if (!isValidLocationUpdate(locationUpdate)) {
-                logger.warn("Invalid location update received, skipping: {}", locationUpdate);
+            if (!isValidLocationUpdate(kafkaDto)) {
+                logger.warn("Invalid location update received, skipping: {}", kafkaDto);
                 return;
             }
             
-            // Check if ride is active (T05 bug fix)
-            if (!isRideActive(locationUpdate.getRide())) {
-                logger.warn("Ride is not active, skipping location update: {}", locationUpdate.getRide().getId());
+            // Check if ride is active (T05 bug fix) - we need to fetch the ride from DB
+            Optional<Ride> rideOpt = rideService.findById(kafkaDto.getRideId());
+            if (rideOpt.isEmpty() || !isRideActive(rideOpt.get())) {
+                logger.warn("Ride is not active or not found, skipping location update: {}", kafkaDto.getRideId());
                 return;
             }
+            
+            // Create a LocationUpdate object for processing (if needed)
+            LocationUpdate locationUpdate = new LocationUpdate();
+            locationUpdate.setId(kafkaDto.getLocationUpdateId());
+            locationUpdate.setLatitude(kafkaDto.getLatitude());
+            locationUpdate.setLongitude(kafkaDto.getLongitude());
+            locationUpdate.setAltitude(kafkaDto.getAltitude());
+            locationUpdate.setSpeed(kafkaDto.getSpeed());
+            locationUpdate.setHeading(kafkaDto.getHeading());
+            locationUpdate.setAccuracy(kafkaDto.getAccuracy());
+            locationUpdate.setTimestamp(kafkaDto.getTimestamp());
+            
             locationService.processLocationUpdate(locationUpdate);
             
             // BUG T15: Over-broadcasting to all clients
             // Broadcast to all connected WebSocket clients
             Map<String, Object> broadcastData = new HashMap<>();
-            broadcastData.put("userId", locationUpdate.getUser().getId());
-            broadcastData.put("rideId", locationUpdate.getRide().getId());
-            broadcastData.put("latitude", locationUpdate.getLatitude());
-            broadcastData.put("longitude", locationUpdate.getLongitude());
-            broadcastData.put("deviceId", locationUpdate.getDevice() != null ? locationUpdate.getDevice().getId() : null); // BUG T08: Using deviceId
-            broadcastData.put("timestamp", locationUpdate.getTimestamp());
+            broadcastData.put("userId", kafkaDto.getUserId());
+            broadcastData.put("rideId", kafkaDto.getRideId());
+            broadcastData.put("groupId", kafkaDto.getGroupId());
+            broadcastData.put("latitude", kafkaDto.getLatitude());
+            broadcastData.put("longitude", kafkaDto.getLongitude());
+            broadcastData.put("deviceId", kafkaDto.getDeviceId());
+            broadcastData.put("timestamp", kafkaDto.getTimestamp());
             
             messagingTemplate.convertAndSend("/topic/location.updates", broadcastData);
             
             // Trigger anomaly detection
-            anomalyDetectionService.detectAnomalies(locationUpdate.getRide().getId());
+            anomalyDetectionService.detectAnomalies(kafkaDto.getRideId());
             
         } catch (Exception e) {
             // T06 FIXED: Log error but don't halt consumer thread
@@ -67,39 +83,39 @@ public class LocationUpdateConsumer {
             // Just log and continue processing other messages
         }
     }
-    private boolean isValidLocationUpdate(LocationUpdate locationUpdate) {
-        if (locationUpdate == null) {
+    private boolean isValidLocationUpdate(LocationUpdateKafkaDto kafkaDto) {
+        if (kafkaDto == null) {
             logger.warn("Location update is null");
             return false;
         }
-        if (locationUpdate.getLatitude() == null) {
+        if (kafkaDto.getLatitude() == null) {
             logger.warn("Latitude is required");
             return false;
         }
-        if (locationUpdate.getLongitude() == null) {
+        if (kafkaDto.getLongitude() == null) {
             logger.warn("Longitude is required");
             return false;
         }
-        if (locationUpdate.getTimestamp() == null) {
+        if (kafkaDto.getTimestamp() == null) {
             logger.warn("Timestamp is required");
             return false;
         }
-        if (locationUpdate.getUser() == null) {
-            logger.warn("User is required");
+        if (kafkaDto.getUserId() == null) {
+            logger.warn("User ID is required");
             return false;
         }
-        if (locationUpdate.getRide() == null) {
-            logger.warn("Ride is required");
+        if (kafkaDto.getRideId() == null) {
+            logger.warn("Ride ID is required");
             return false;
         }
         
         // Validate coordinate ranges
-        if (locationUpdate.getLatitude() < -90.0 || locationUpdate.getLatitude() > 90.0) {
-            logger.warn("Latitude must be between -90 and 90, got: {}", locationUpdate.getLatitude());
+        if (kafkaDto.getLatitude() < -90.0 || kafkaDto.getLatitude() > 90.0) {
+            logger.warn("Latitude must be between -90 and 90, got: {}", kafkaDto.getLatitude());
             return false;
         }
-        if (locationUpdate.getLongitude() < -180.0 || locationUpdate.getLongitude() > 180.0) {
-            logger.warn("Longitude must be between -180 and 180, got: {}", locationUpdate.getLongitude());
+        if (kafkaDto.getLongitude() < -180.0 || kafkaDto.getLongitude() > 180.0) {
+            logger.warn("Longitude must be between -180 and 180, got: {}", kafkaDto.getLongitude());
             return false;
         }
         
@@ -107,15 +123,15 @@ public class LocationUpdateConsumer {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime oneYearAgo = now.minusYears(1);
         LocalDateTime oneHourFromNow = now.plusHours(1);
-        if (locationUpdate.getTimestamp().isBefore(oneYearAgo) || 
-            locationUpdate.getTimestamp().isAfter(oneHourFromNow)) {
-            logger.warn("Timestamp must be within reasonable range, got: {}", locationUpdate.getTimestamp());
+        if (kafkaDto.getTimestamp().isBefore(oneYearAgo) || 
+            kafkaDto.getTimestamp().isAfter(oneHourFromNow)) {
+            logger.warn("Timestamp must be within reasonable range, got: {}", kafkaDto.getTimestamp());
             return false;
         }
         
         // Validate accuracy if present
-        if (locationUpdate.getAccuracy() != null && locationUpdate.getAccuracy() < 0) {
-            logger.warn("Accuracy must be non-negative, got: {}", locationUpdate.getAccuracy());
+        if (kafkaDto.getAccuracy() != null && kafkaDto.getAccuracy() < 0) {
+            logger.warn("Accuracy must be non-negative, got: {}", kafkaDto.getAccuracy());
             return false;
         }
         

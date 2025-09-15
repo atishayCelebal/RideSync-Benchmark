@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +33,9 @@ public class LocationUpdateConsumer {
     // BUG T05: Kafka consumer processes inactive sessions
     // BUG T06: Malformed GPS payload crashes consumer
     @KafkaListener(topics = "location-updates", groupId = "ridesync-group")
+    @Transactional
     public void handleLocationUpdate(LocationUpdateKafkaDto kafkaDto) {
+        logger.info("Kafka message received in consumer: {}", kafkaDto);
         try {
             // T06 FIXED: Validate GPS payload before processing
             if (!isValidLocationUpdate(kafkaDto)) {
@@ -42,10 +45,12 @@ public class LocationUpdateConsumer {
             
             // Check if ride is active (T05 bug fix) - we need to fetch the ride from DB
             Optional<Ride> rideOpt = rideService.findById(kafkaDto.getRideId());
+            logger.info("Ride lookup result: {}", rideOpt.isPresent() ? "Found" : "Not found");
             if (rideOpt.isEmpty() || !isRideActive(rideOpt.get())) {
                 logger.warn("Ride is not active or not found, skipping location update: {}", kafkaDto.getRideId());
                 return;
             }
+            logger.info("Ride validation passed, proceeding with WebSocket broadcast");
             
             // Create a LocationUpdate object for processing (if needed)
             LocationUpdate locationUpdate = new LocationUpdate();
@@ -57,8 +62,9 @@ public class LocationUpdateConsumer {
             locationUpdate.setHeading(kafkaDto.getHeading());
             locationUpdate.setAccuracy(kafkaDto.getAccuracy());
             locationUpdate.setTimestamp(kafkaDto.getTimestamp());
+            // locationUpdate.setRide(rideOpt.get()); // Set the ride from the fetched data
             
-            locationService.processLocationUpdate(locationUpdate);
+            // locationService.processLocationUpdate(locationUpdate);
             
             // BUG T15: Over-broadcasting to all clients
             // Broadcast to all connected WebSocket clients
@@ -71,8 +77,9 @@ public class LocationUpdateConsumer {
             broadcastData.put("deviceId", kafkaDto.getDeviceId());
             broadcastData.put("timestamp", kafkaDto.getTimestamp());
             
+            logger.info("Broadcasting location update to WebSocket clients: {}", broadcastData);
             messagingTemplate.convertAndSend("/topic/location.updates", broadcastData);
-            
+            logger.info("WebSocket message sent successfully to topic: /topic/location.updates");
             // Trigger anomaly detection
             anomalyDetectionService.detectAnomalies(kafkaDto.getRideId());
             

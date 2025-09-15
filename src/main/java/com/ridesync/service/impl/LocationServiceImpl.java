@@ -11,6 +11,7 @@ import com.ridesync.repository.UserRepository;
 import com.ridesync.service.LocationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class LocationServiceImpl implements LocationService {
     private final LocationUpdateRepository locationUpdateRepository;
     private final RideRepository rideRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
     private final KafkaTemplate<String, LocationUpdateKafkaDto> kafkaTemplate;
     
     // BUG T03: No JWT/session validation
@@ -68,6 +70,7 @@ public class LocationServiceImpl implements LocationService {
                 .build();
         
         // Publish to Kafka for real-time processing
+        messagingTemplate.convertAndSend("/topic/location.updates", "broadcastData");
         kafkaTemplate.send("location-updates", kafkaDto);
         
         return savedUpdate;

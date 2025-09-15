@@ -55,6 +55,8 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()
                 // FIXED T03: Location API now requires authentication
                 .requestMatchers("/api/v1/location/**").authenticated()
+                .requestMatchers("/ws-native/**").permitAll()
+                // TESTING: Temporarily disable authentication for location API
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

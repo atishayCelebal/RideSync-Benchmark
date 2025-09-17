@@ -2,6 +2,7 @@ package com.ridesync.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.ridesync.dto.LocationUpdateKafkaDto;
 import com.ridesync.model.Device;
 import com.ridesync.model.DeviceType;
 import com.ridesync.model.LocationUpdate;
@@ -57,7 +58,7 @@ class LocationUpdateConsumerT06Test {
     private DeviceRepository deviceRepository;
 
     @Mock
-    private KafkaTemplate<String, Object> kafkaTemplate;
+    private KafkaTemplate<String, LocationUpdateKafkaDto> kafkaTemplate;
 
     @Mock
     private SimpMessagingTemplate messagingTemplate;
@@ -121,27 +122,32 @@ class LocationUpdateConsumerT06Test {
                 .thenReturn(java.util.Optional.of(testDevice));
         lenient().when(locationUpdateRepository.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // Mock RideService
+        lenient().when(rideService.findById(any(UUID.class)))
+                .thenReturn(java.util.Optional.of(testRide));
     }
 
     @Test
     @DisplayName("T06-FIXED: Consumer properly validates null latitude")
     void testConsumerValidatesNullLatitude_FixedT06() throws Exception {
         // Given: Location update with null latitude
-        LocationUpdate badLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto badKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(null) // Invalid data
                 .longitude(-74.0060)
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now())
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes bad data
         // T06 FIXED: This should NOT throw exception - should log error and continue
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(badLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(badKafkaDto);
         }, "T06 FIXED: Consumer should handle bad data gracefully without halting thread");
 
         // Then: Consumer should not process the data
@@ -153,21 +159,22 @@ class LocationUpdateConsumerT06Test {
     @DisplayName("T06-FIXED: Consumer properly validates null longitude")
     void testConsumerValidatesNullLongitude_FixedT06() throws Exception {
         // Given: Location update with null longitude
-        LocationUpdate badLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto badKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(null) // Invalid data
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now())
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes bad data
         // T06 FIXED: This should NOT throw exception - should log error and continue
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(badLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(badKafkaDto);
         }, "T06 FIXED: Consumer should handle bad data gracefully without halting thread");
 
         // Then: Consumer should not process the data
@@ -178,21 +185,22 @@ class LocationUpdateConsumerT06Test {
     @DisplayName("T06-FIXED: Consumer properly validates null timestamp")
     void testConsumerValidatesNullTimestamp_FixedT06() throws Exception {
         // Given: Location update with null timestamp
-        LocationUpdate badLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto badKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(-74.0060)
                 .accuracy(10.5)
                 .timestamp(null) // Invalid data
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes bad data
         // T06 FIXED: This should NOT throw exception - should log error and continue
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(badLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(badKafkaDto);
         }, "T06 FIXED: Consumer should handle bad data gracefully without halting thread");
 
         // Then: Consumer should not process the data
@@ -203,21 +211,22 @@ class LocationUpdateConsumerT06Test {
     @DisplayName("T06-FIXED: Consumer properly validates invalid latitude range")
     void testConsumerValidatesInvalidLatitudeRange_FixedT06() throws Exception {
         // Given: Location update with invalid latitude (outside valid range)
-        LocationUpdate badLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto badKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(200.0) // Invalid latitude
                 .longitude(-74.0060)
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now())
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes bad data
         // T06 FIXED: This should NOT throw exception - should log error and continue
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(badLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(badKafkaDto);
         }, "T06 FIXED: Consumer should handle bad data gracefully without halting thread");
 
         // Then: Consumer should not process the data
@@ -228,21 +237,22 @@ class LocationUpdateConsumerT06Test {
     @DisplayName("T06-FIXED: Consumer properly validates invalid longitude range")
     void testConsumerValidatesInvalidLongitudeRange_FixedT06() throws Exception {
         // Given: Location update with invalid longitude (outside valid range)
-        LocationUpdate badLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto badKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(200.0) // Invalid longitude
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now())
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes bad data
         // T06 FIXED: This should NOT throw exception - should log error and continue
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(badLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(badKafkaDto);
         }, "T06 FIXED: Consumer should handle bad data gracefully without halting thread");
 
         // Then: Consumer should not process the data
@@ -253,25 +263,26 @@ class LocationUpdateConsumerT06Test {
     @DisplayName("T06-FIXED: Consumer processes valid data successfully")
     void testConsumerProcessesValidDataSuccessfully_FixedT06() throws Exception {
         // Given: Valid location update
-        LocationUpdate validLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto validKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(-74.0060)
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now())
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes valid data
         // T06 FIXED: This should NOT throw exception - should process successfully
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(validLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(validKafkaDto);
         }, "T06 FIXED: Consumer should process valid data successfully without throwing exception");
 
         // Then: Consumer should process the data
-        verify(locationService).processLocationUpdate(validLocationUpdate);
+        verify(locationService).processLocationUpdate(any(LocationUpdate.class));
         // verify(messagingTemplate).convertAndSend(validLocationUpdate);
     }
 
@@ -279,21 +290,22 @@ class LocationUpdateConsumerT06Test {
     @DisplayName("T06-FIXED: Consumer properly validates future timestamp")
     void testConsumerValidatesFutureTimestamp_FixedT06() throws Exception {
         // Given: Location update with future timestamp
-        LocationUpdate badLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto badKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(-74.0060)
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now().plusYears(1)) // Future timestamp
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes bad data
         // T06 FIXED: This should NOT throw exception - should log error and continue
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(badLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(badKafkaDto);
         }, "T06 FIXED: Consumer should handle bad data gracefully without halting thread");
 
         // Then: Consumer should not process the data
@@ -304,21 +316,22 @@ class LocationUpdateConsumerT06Test {
     @DisplayName("T06-FIXED: Consumer properly validates very old timestamp")
     void testConsumerValidatesVeryOldTimestamp_FixedT06() throws Exception {
         // Given: Location update with very old timestamp
-        LocationUpdate badLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto badKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(-74.0060)
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now().minusYears(10)) // Very old timestamp
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes bad data
         // T06 FIXED: This should NOT throw exception - should log error and continue
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(badLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(badKafkaDto);
         }, "T06 FIXED: Consumer should handle bad data gracefully without halting thread");
 
         // Then: Consumer should not process the data
@@ -329,21 +342,22 @@ class LocationUpdateConsumerT06Test {
     @DisplayName("T06-FIXED: Consumer properly validates negative accuracy")
     void testConsumerValidatesNegativeAccuracy_FixedT06() throws Exception {
         // Given: Location update with negative accuracy
-        LocationUpdate badLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto badKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(-74.0060)
                 .accuracy(-10.5) // Negative accuracy
                 .timestamp(LocalDateTime.now())
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes bad data
         // T06 FIXED: This should NOT throw exception - should log error and continue
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(badLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(badKafkaDto);
         }, "T06 FIXED: Consumer should handle bad data gracefully without halting thread");
 
         // Then: Consumer should not process the data
@@ -354,74 +368,77 @@ class LocationUpdateConsumerT06Test {
     @DisplayName("T06-FIXED: Consumer handles malformed data gracefully")
     void testConsumerHandlesMalformedDataGracefully_FixedT06() throws Exception {
         // Given: Valid location update (simulating malformed data that was fixed)
-        LocationUpdate validLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto validKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(-74.0060)
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now())
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes data
         // T06 FIXED: This should NOT throw exception - should process successfully
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(validLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(validKafkaDto);
         }, "T06 FIXED: Consumer should handle data gracefully without halting thread");
 
         // Then: Consumer should process the data
-        verify(locationService).processLocationUpdate(validLocationUpdate);
+        verify(locationService).processLocationUpdate(any(LocationUpdate.class));
     }
 
     @Test
     @DisplayName("T06-FIXED: Consumer handles missing required fields gracefully")
     void testConsumerHandlesMissingRequiredFieldsGracefully_FixedT06() throws Exception {
         // Given: Valid location update (simulating missing fields that were fixed)
-        LocationUpdate validLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto validKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(-74.0060)
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now())
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes data
         // T06 FIXED: This should NOT throw exception - should process successfully
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(validLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(validKafkaDto);
         }, "T06 FIXED: Consumer should handle data gracefully without halting thread");
 
         // Then: Consumer should process the data
-        verify(locationService).processLocationUpdate(validLocationUpdate);
+        verify(locationService).processLocationUpdate(any(LocationUpdate.class));
     }
 
     @Test
     @DisplayName("T06-FIXED: Consumer handles invalid data types gracefully")
     void testConsumerHandlesInvalidDataTypesGracefully_FixedT06() throws Exception {
         // Given: Valid location update (simulating invalid data types that were fixed)
-        LocationUpdate validLocationUpdate = LocationUpdate.builder()
-                .id(UUID.randomUUID())
-                .user(testUser)
-                .ride(testRide)
-                .device(testDevice)
+        LocationUpdateKafkaDto validKafkaDto = LocationUpdateKafkaDto.builder()
+                .locationUpdateId(UUID.randomUUID())
+                .userId(testUser.getId())
+                .rideId(testRide.getId())
+                .groupId(UUID.randomUUID())
                 .latitude(40.7128)
                 .longitude(-74.0060)
                 .accuracy(10.5)
                 .timestamp(LocalDateTime.now())
+                .deviceId(testDevice.getId())
                 .build();
 
         // When: Consumer processes data
         // T06 FIXED: This should NOT throw exception - should process successfully
         assertDoesNotThrow(() -> {
-            locationUpdateConsumer.handleLocationUpdate(validLocationUpdate);
+            locationUpdateConsumer.handleLocationUpdate(validKafkaDto);
         }, "T06 FIXED: Consumer should handle data gracefully without halting thread");
 
         // Then: Consumer should process the data
-        verify(locationService).processLocationUpdate(validLocationUpdate);
+        verify(locationService).processLocationUpdate(any(LocationUpdate.class));
     }
 }

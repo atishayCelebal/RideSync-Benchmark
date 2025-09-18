@@ -17,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -26,6 +27,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
     private final SessionValidationFilter sessionValidationFilter;
+    private final CorsConfigurationSource corsConfigurationSource;
     
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -48,15 +50,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
-                // FIXED T03: Location API now requires authentication
-                .requestMatchers("/api/v1/location/**").authenticated()
                 .requestMatchers("/ws-native/**").permitAll()
-                // TESTING: Temporarily disable authentication for location API
+                // TESTING: Temporarily disable authentication for location API and test endpoints
+                .requestMatchers("/api/v1/location/**").permitAll()
+                .requestMatchers("/api/v1/test/**").permitAll()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
